@@ -839,6 +839,16 @@ namespace ts {
             category: Diagnostics.Experimental_Options,
             description: Diagnostics.Enables_experimental_support_for_emitting_type_metadata_for_decorators
         },
+        {
+            name: "preprocessor",
+            type: "list",
+            element: {
+                name: "preprocessorName",
+                type: "string",
+            },
+            affectsEmit: true,
+            category: Diagnostics.Experimental_Options,
+        },
 
         // Advanced
         {
@@ -2448,6 +2458,17 @@ namespace ts {
         const parsedConfig = parseConfig(json, sourceFile, host, basePath, configFileName, resolutionStack, errors, extendedConfigCache);
         const { raw } = parsedConfig;
         const options = extend(existingOptions, parsedConfig.options || {});
+
+        //kkkk add support "extends"
+        preprocessorEnabled = false;
+        clearPreprocessorName();
+        if (options.preprocessor) {
+            preprocessorEnabled = true;
+            forEach(options.preprocessor, name => {
+                addPreprocessorName(name.trim());
+            })
+        }
+
         const watchOptions = existingWatchOptions && parsedConfig.watchOptions ?
             extend(existingWatchOptions, parsedConfig.watchOptions) :
             parsedConfig.watchOptions || existingWatchOptions;

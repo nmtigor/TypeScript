@@ -588,6 +588,7 @@ namespace ts {
                     }
                     if (text.charCodeAt(pos + 1) === CharacterCodes.slash) {
                         pos += 2;
+                        const posCommentStart = pos;
                         while (pos < text.length) {
                             if (isLineBreak(text.charCodeAt(pos))) {
                                 break;
@@ -595,10 +596,20 @@ namespace ts {
                             pos++;
                         }
                         canConsumeStar = false;
+                        if (preprocessorEnabled) {
+                            preprocessParams.text = text;
+                            preprocessParams.posCommentStart = posCommentStart;
+                            preprocessParams.posCommentEnd = pos;
+                            preprocessParams.pos = pos;
+                            preprocessParams.end = text.length;
+                            preprocess(preprocessParams);
+                            pos = preprocessParams.pos;
+                        }
                         continue;
                     }
                     if (text.charCodeAt(pos + 1) === CharacterCodes.asterisk) {
                         pos += 2;
+                        const posCommentStart = pos;
                         while (pos < text.length) {
                             if (text.charCodeAt(pos) === CharacterCodes.asterisk && text.charCodeAt(pos + 1) === CharacterCodes.slash) {
                                 pos += 2;
@@ -607,6 +618,15 @@ namespace ts {
                             pos++;
                         }
                         canConsumeStar = false;
+                        if (preprocessorEnabled && pos < text.length) {
+                            preprocessParams.text = text;
+                            preprocessParams.posCommentStart = posCommentStart;
+                            preprocessParams.posCommentEnd = pos - 2;
+                            preprocessParams.pos = pos;
+                            preprocessParams.end = text.length;
+                            preprocess(preprocessParams);
+                            pos = preprocessParams.pos;
+                        }
                         continue;
                     }
                     break;
@@ -789,6 +809,7 @@ namespace ts {
                         const kind = nextChar === CharacterCodes.slash ? SyntaxKind.SingleLineCommentTrivia : SyntaxKind.MultiLineCommentTrivia;
                         const startPos = pos;
                         pos += 2;
+                        const posCommentStart = pos;
                         if (nextChar === CharacterCodes.slash) {
                             while (pos < text.length) {
                                 if (isLineBreak(text.charCodeAt(pos))) {
@@ -796,6 +817,11 @@ namespace ts {
                                     break;
                                 }
                                 pos++;
+                            }
+                            if (preprocessorEnabled
+                             && isPreprocessorComment(text, posCommentStart, pos)) {
+                                pos++;
+                                continue;
                             }
                         }
                         else {
@@ -806,6 +832,12 @@ namespace ts {
                                 }
                                 pos++;
                             }
+                            if (preprocessorEnabled
+                             && pos < text.length
+                             && isPreprocessorComment(text, posCommentStart, pos-2)) {
+                                pos++;
+                                continue;
+                             }
                         }
 
                         if (collecting) {
@@ -1764,12 +1796,26 @@ namespace ts {
                         // Single-line comment
                         if (text.charCodeAt(pos + 1) === CharacterCodes.slash) {
                             pos += 2;
+                            const posCommentStart = pos;
 
                             while (pos < end) {
                                 if (isLineBreak(text.charCodeAt(pos))) {
                                     break;
                                 }
                                 pos++;
+                            }
+                            const posCommentEnd = pos;
+
+                            if (preprocessorEnabled) {
+                                preprocessParams.text = text;
+                                preprocessParams.posCommentStart = posCommentStart;
+                                preprocessParams.posCommentEnd = posCommentEnd;
+                                preprocessParams.pos = pos;
+                                preprocessParams.end = end;
+                                if (preprocess(preprocessParams) === PreprocessReturn.skip) {
+                                    pos = preprocessParams.pos;
+                                    continue;
+                                }
                             }
 
                             commentDirectives = appendIfCommentDirective(
@@ -1789,6 +1835,7 @@ namespace ts {
                         // Multi-line comment
                         if (text.charCodeAt(pos + 1) === CharacterCodes.asterisk) {
                             pos += 2;
+                            const posCommentStart = pos;
                             if (text.charCodeAt(pos) === CharacterCodes.asterisk && text.charCodeAt(pos + 1) !== CharacterCodes.slash) {
                                 tokenFlags |= TokenFlags.PrecedingJSDocComment;
                             }
@@ -1809,6 +1856,19 @@ namespace ts {
                                 if (isLineBreak(ch)) {
                                     lastLineStart = pos;
                                     tokenFlags |= TokenFlags.PrecedingLineBreak;
+                                }
+                            }
+                            const posCommentEnd = commentClosed ? pos - 2 : pos;
+
+                            if (preprocessorEnabled) {
+                                preprocessParams.text = text;
+                                preprocessParams.posCommentStart = posCommentStart;
+                                preprocessParams.posCommentEnd = posCommentEnd;
+                                preprocessParams.pos = pos;
+                                preprocessParams.end = end;
+                                if (preprocess(preprocessParams) === PreprocessReturn.skip) {
+                                    pos = preprocessParams.pos;
+                                    continue;
                                 }
                             }
 
@@ -2617,4 +2677,479 @@ namespace ts {
     export function utf16EncodeAsString(codePoint: number) {
         return utf16EncodeAsStringWorker(codePoint);
     }
+
+    export let preprocessorEnabled = false;
+    export function addPreprocessorName(preprocessorName: string) { preprocessor.names.add(preprocessorName); }
+    export function clearPreprocessorName() { preprocessor.names.clear(); }
+
+    /** Helper */
+    const preprocessParams = <{
+      text: string;
+      posCommentStart: number;
+      posCommentEnd: number;
+      pos: number;
+      end: number;
+    }>Object.create(null);
+
+    namespace preprocessor {
+        export const names = new Set<string>();
+
+        function isNameStart(ch: number) {
+            return ch >= CharacterCodes.A && ch <= CharacterCodes.Z 
+                || ch >= CharacterCodes.a && ch <= CharacterCodes.z
+                || ch === CharacterCodes._;
+        }
+        function isNamePart(ch: number) {
+            return ch >= CharacterCodes.A && ch <= CharacterCodes.Z
+                || ch >= CharacterCodes.a && ch <= CharacterCodes.z
+                || ch >= CharacterCodes._0 && ch <= CharacterCodes._9
+                || ch === CharacterCodes._;
+        }
+
+        let groupingDepth = 0;
+
+        // Ref. https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence
+        const enum Precedence
+        {
+            // grouping = 21,
+            logicalNot = 17,
+            logicalAnd = 7,
+            logicalOr = 6,
+            lowest = 0,
+        }
+
+        interface ScanTermParams {
+            readonly text: string;
+            pos: number;
+            readonly pos1: number;
+        }
+        /**
+         * `!TERM`, `TERM`, `TERM && TERM`, `TERM || TERM`
+         */
+        function scanTerm(params: ScanTermParams, precedence = Precedence.lowest) {
+            let ret: boolean | undefined;
+
+            const text = params.text;
+            let pos = params.pos;
+            const pos1 = params.pos1;
+            while (pos < pos1) {
+                let ch = text.charCodeAt(pos);
+                if (ch === CharacterCodes.exclamation) {
+                    if (ret !== undefined) { ret = undefined; break; }
+
+                    params.pos = pos + 1;
+                    const ret1 = scanTerm(params, Precedence.logicalNot);
+                    if (ret1 === undefined) ret = undefined;
+                    else ret = !ret1;
+                    break;
+                }
+                else if (isNameStart(ch)) {
+                    if (ret !== undefined) { ret = undefined; break; }
+
+                    const posName0 = pos;
+                    while (++pos < pos1 && isNamePart(text.charCodeAt(pos))) {}
+                    const posName1 = pos;
+                    ret = names.has(text.slice(posName0, posName1));
+                }
+                else if (ch === CharacterCodes.ampersand) {
+                    if (++pos >= pos1 || text.charCodeAt(pos) !== CharacterCodes.ampersand) { ret = undefined; break; }
+                    if (ret === undefined) break;
+                    if (precedence > Precedence.logicalAnd) break; // `!A && B`
+
+                    params.pos = pos + 1;
+                    const ret1 = scanTerm(params, Precedence.logicalAnd);
+                    if (ret1 === undefined ) ret = undefined;
+                    else ret &&= ret1;
+                    break;
+                }
+                else if (ch === CharacterCodes.bar) {
+                    if (++pos >= pos1 || text.charCodeAt(pos) !== CharacterCodes.bar) { ret = undefined; break; }
+                    if (ret === undefined) break;
+                    if (precedence > Precedence.logicalOr) break; // `!A || B`, `A && B || C`
+
+                    params.pos = pos + 1;
+                    const ret1 = scanTerm(params, Precedence.logicalOr);
+                    if (ret1 === undefined ) ret = undefined;
+                    else ret ||= ret1;
+                    break;
+                }
+                else if (ch === CharacterCodes.openParen) {
+                    if (ret !== undefined) { ret = undefined; break; }
+
+                    params.pos = pos + 1;
+                    groupingDepth++;
+                    ret = scanTerm(params);
+                    if (ret === undefined) break;
+
+                    pos = params.pos;
+                    if (pos < pos1 && isWhiteSpaceSingleLine(text.charCodeAt(pos))) {
+                        while (++pos < pos1 && isWhiteSpaceSingleLine(text.charCodeAt(pos))) {}
+                    }
+                    if (pos < pos1 && text.charCodeAt(pos) === CharacterCodes.closeParen) {
+                        if (groupingDepth > 0) {
+                            groupingDepth--;
+                            pos++;
+                        }
+                        else ret = undefined;
+                    }
+                    else ret = undefined; 
+                    if (ret === undefined) { params.pos = pos; break; }
+                }
+                else if (isWhiteSpaceSingleLine(ch)) {
+                    while (++pos < pos1 && isWhiteSpaceSingleLine(text.charCodeAt(pos))) {}
+                }
+                else if (ch === CharacterCodes.closeParen) { // `(A)`
+                    if (groupingDepth === 0) ret = undefined;
+                    params.pos = pos;
+                    break;
+                }
+                else { ret = undefined; break; }
+            }
+            return ret;
+        }
+
+        const directiveRegEx = /^#(if|else|endif)/;
+        const directiveMinlen = 1 + 2;
+        const directiveMaxlen = 1 + 5;
+        
+        const enum Kind {
+            invalid,
+            ifTrue,
+            ifFalse,
+            else,
+            endif,
+        }
+        /**
+         * `#if TERM`, `#else`, `#endif`
+         */
+        function scanKind(text: string, pos: number, pos1: number): Kind {
+            while (pos < pos1) {
+                let ch = text.charCodeAt(pos);
+                if (ch === CharacterCodes.hash) {
+                    if (pos1 - pos < directiveMinlen) break;
+
+                    const directiveStr = text.slice(pos, Math.min(pos+directiveMaxlen, pos1));
+                    const match = directiveRegEx.exec(directiveStr);
+                    if (!match) break;
+
+                    pos += 1 + match[1].length;
+                    switch (match[1]) {
+                        case "if":
+                            if (pos < pos1) {
+                                let b: boolean | undefined;
+                                ch = text.charCodeAt(pos);
+                                groupingDepth = 0;
+                                if (isWhiteSpaceSingleLine(ch)) {
+                                    b = scanTerm({ text, pos: pos+1, pos1 });
+                                }
+                                else if (ch === CharacterCodes.openParen) {
+                                    b = scanTerm({ text, pos, pos1 });
+                                }
+                                if (groupingDepth !== 0) b = undefined;
+                                if (b === true) return Kind.ifTrue;
+                                else if (b === false) return Kind.ifFalse;
+                            }
+                            break;
+                        case "else":
+                            if (pos < pos1) {
+                                while (isWhiteSpaceSingleLine(text.charCodeAt(pos))) {
+                                  if (++pos >= pos1) return Kind.else;
+                                }
+                            }
+                            else return Kind.else;
+                            break;
+                        case "endif":
+                            if (pos < pos1) {
+                                while (isWhiteSpaceSingleLine(text.charCodeAt(pos))) {
+                                  if (++pos >= pos1) return Kind.endif;
+                                }
+                            }
+                            else return Kind.endif;
+                            break;
+                    }
+                    break;
+                }
+                else if (isWhiteSpaceSingleLine(ch)) {
+                    while (++pos < pos1 && isWhiteSpaceSingleLine(text.charCodeAt(pos))) {}
+                }
+                else break;
+            }
+            return Kind.invalid;
+        }
+
+        export function isPreprocessorComment(text: string, posCommentStart: number, posCommentEnd: number) {
+            return scanKind(text, posCommentStart, posCommentEnd) !== Kind.invalid;
+        }
+
+        function isHexDigit(ch: number) {
+          return ch >= CharacterCodes.A && ch <= CharacterCodes.F
+              || ch >= CharacterCodes.a && ch <= CharacterCodes.f
+              || ch >= CharacterCodes._0 && ch <= CharacterCodes._9;
+        }
+
+        function skipEscapeSequence(text: string, pos: number, end: number) {
+            if (pos >= end) return pos;
+
+            const ch = text.charCodeAt(pos);
+            if (ch === CharacterCodes.u) {
+                pos++;
+                if (pos < end && text.charCodeAt(pos) === CharacterCodes.openBrace) {
+                    pos++;
+                    while (pos < end && isHexDigit(text.charCodeAt(pos))) {
+                        pos++;
+                    }
+                    if (pos < end && text.charCodeAt(pos) === CharacterCodes.closeBrace) {
+                        pos++;
+                    }
+                }
+                else {
+                    if (pos < end && isHexDigit(text.charCodeAt(pos))) {
+                        pos++;
+                        if (pos < end && isHexDigit(text.charCodeAt(pos))) {
+                            pos++;
+                            if (pos < end && isHexDigit(text.charCodeAt(pos))) {
+                                pos++;
+                                if (pos < end && isHexDigit(text.charCodeAt(pos))) {
+                                    pos++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            else if (ch === CharacterCodes.x) {
+                pos++;
+                if (pos < end && isHexDigit(text.charCodeAt(pos))) {
+                    pos++;
+                    if (pos < end && isHexDigit(text.charCodeAt(pos))) {
+                        pos++;
+                    }
+                }
+            }
+            else if (ch === CharacterCodes.carriageReturn) {
+                pos++;
+                if (pos < end && text.charCodeAt(pos) === CharacterCodes.lineFeed) {
+                    pos++;
+                }
+            }
+            else pos++;
+            return pos;
+        }
+        /**
+         * Scan from `params.pos` to `params.end`.
+         * Update `params.posCommentStart`, `params.posCommentEnd`, `params.pos`.
+         * Ignore scan errors.
+         * 
+         * kkkk regular expression
+         * kkkk template literal
+         */
+        function nextComment(params: PreprocessParams): void {
+            let pos = params.pos;
+            const end = params.end;
+            const text = params.text;
+            while (pos < end) {
+                const ch = text.charCodeAt(pos);
+                if (ch === CharacterCodes.doubleQuote 
+                 || ch === CharacterCodes.singleQuote) {
+                    pos++;
+                    // const pos_save = pos;
+                    while (pos < end) {
+                        const ch1 = text.charCodeAt(pos);
+                        if (ch1 === ch) {
+                            pos++;
+                            break;
+                        }
+
+                        if (ch1 === CharacterCodes.backslash) {
+                            pos = skipEscapeSequence(text, pos+1, end);
+                            continue;
+                        }
+                        else if (isLineBreak(ch1)) {
+                            pos++;
+                            // pos = pos_save;
+                            break;
+                        }
+                        pos++;
+                    }
+                }
+                else if (ch === CharacterCodes.slash) {
+                    pos++;
+                    // Single-line comment
+                    if (text.charCodeAt(pos) === CharacterCodes.slash) {
+                        pos++;
+                        params.posCommentStart = pos;
+
+                        while (pos < end) {
+                            if (isLineBreak(text.charCodeAt(pos))) {
+                                break;
+                            }
+                            pos++;
+                        }
+                        params.posCommentEnd = pos;
+
+                        break;
+                    }
+                    // Multi-line comment
+                    if (text.charCodeAt(pos) === CharacterCodes.asterisk) {
+                        pos++;
+                        params.posCommentStart = pos;
+
+                        while (pos < end) {
+                            if (text.charCodeAt(pos) === CharacterCodes.asterisk 
+                             && text.charCodeAt(pos + 1) === CharacterCodes.slash) {
+                                pos += 2;
+                                break;
+                            }
+                            pos++;
+                        }
+                        if (pos < end) params.posCommentEnd = pos - 2;
+
+                        break;
+                    }
+                }
+                else pos++;
+            }
+            if (pos < end) params.pos = pos;
+        }
+
+        const enum State {
+            ifIncluding,
+            ifExcluding,
+            elseIncluding,
+            elseExcluding,
+        }
+        const stateStack: State[] = [];
+        function getState() {
+          const LEN = stateStack.length;
+          if (LEN > 0) {
+            return stateStack[LEN - 1];
+          }
+          else {
+            return undefined;
+          }
+        }
+        
+        /**
+         * Update `stateStack`.
+         */
+        function onEndif() {
+            stateStack.pop();
+        }
+
+        function scanEndif(text: string, pos: number, end: number) {
+            const params: PreprocessParams = {
+              text,
+              posCommentStart: -1,
+              posCommentEnd: -1,
+              pos,
+              end,
+            };
+            do {
+              nextComment(params);
+              if (params.pos <= pos) break; // make sure move forwards
+
+              const kind = scanKind(params.text, params.posCommentStart, params.posCommentEnd);
+              if (kind === Kind.endif) {
+                  onEndif();
+                  return params.pos;
+              }
+
+              params.posCommentStart = -1;
+              params.posCommentEnd = -1;
+              pos = params.pos;
+            } while (pos < params.end);
+            return -1;
+        }
+
+        /**
+         * Update `stateStack`.
+         * Update `params.pos` only if skipping to the end of "#endif" comment.
+         */
+        function onElse(params: PreprocessParams) {
+            const preprocessState = getState();
+            if (preprocessState === State.ifIncluding) {
+                stateStack[stateStack.length - 1] = State.elseExcluding;
+                const pos = scanEndif(params.text, params.pos, params.end);
+                if (pos >= 0) {
+                    params.pos = pos;
+                }
+            }
+            else if (preprocessState === State.ifExcluding) {
+                stateStack[stateStack.length - 1] = State.elseIncluding;
+            }
+        }
+
+        function scanElseOrEndif(text: string, pos: number, end: number) {
+            const params: PreprocessParams = {
+              text,
+              posCommentStart: -1,
+              posCommentEnd: -1,
+              pos,
+              end,
+            };
+            do {
+              nextComment(params);
+              if (params.pos <= pos) break; // make sure move forwards
+
+              const kind = scanKind(params.text, params.posCommentStart, params.posCommentEnd);
+              if (kind === Kind.else) {
+                  onElse(params);
+                  return params.pos;
+              }
+              else if (kind === Kind.endif) {
+                  onEndif();
+                  return params.pos;
+              }
+
+              params.posCommentStart = -1;
+              params.posCommentEnd = -1;
+              pos = params.pos;
+            } while (pos < params.end);
+            return -1;
+        }
+
+        interface PreprocessParams {
+            readonly text: string;
+            posCommentStart: number;
+            posCommentEnd: number;
+            pos: number;
+            readonly end: number;
+        }
+        export const enum PreprocessReturn {
+            noop,
+            skip,
+        }
+        /**
+         * If return `noop`, `params` won't be modified.
+         * If return `skip`, `params.pos` could be modified.
+         */
+        export function preprocess(params: PreprocessParams): PreprocessReturn {
+            let ret = PreprocessReturn.skip;
+            switch (scanKind(params.text, params.posCommentStart, params.posCommentEnd)) {
+                case Kind.ifTrue:
+                    stateStack.push(State.ifIncluding);
+                    break;
+                case Kind.ifFalse:
+                    stateStack.push(State.ifExcluding);
+                    const pos = scanElseOrEndif(params.text, params.pos, params.end);
+                    if (pos >= 0) {
+                        params.pos = pos;
+                    }
+                    break;
+                case Kind.else:
+                    onElse(params);
+                    break;
+                case Kind.endif:
+                    onEndif();
+                    break;
+                default:
+                    ret = PreprocessReturn.noop;
+                    break;
+            }
+            return ret
+        }
+    }
+    import preprocess = preprocessor.preprocess;
+    import PreprocessReturn = preprocessor.PreprocessReturn;
+    import isPreprocessorComment = preprocessor.isPreprocessorComment;
 }
