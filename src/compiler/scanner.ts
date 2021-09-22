@@ -3039,37 +3039,23 @@ namespace ts {
             return undefined;
           }
         }
+        function inIncludedBlock() {
+          for (let i = stateStack.length; i--;)
+          {
+            if (stateStack[i] !== State.ifIncluding
+             && stateStack[i] !== State.elseIncluding
+            ) {
+              return false;
+            }
+          }
+          return true;
+        }
         
         /**
          * Update `stateStack`.
          */
         function onEndif() {
             stateStack.pop();
-        }
-
-        function scanEndif(text: string, pos: number, end: number) {
-            const params: PreprocessParams = {
-              text,
-              posCommentStart: -1,
-              posCommentEnd: -1,
-              pos,
-              end,
-            };
-            do {
-              nextComment(params);
-              if (params.pos <= pos) break; // make sure move forwards
-
-              const kind = scanKind(params.text, params.posCommentStart, params.posCommentEnd);
-              if (kind === Kind.endif) {
-                  onEndif();
-                  return params.pos;
-              }
-
-              params.posCommentStart = -1;
-              params.posCommentEnd = -1;
-              pos = params.pos;
-            } while (pos < params.end);
-            return -1;
         }
 
         /**
@@ -3080,43 +3066,54 @@ namespace ts {
             const preprocessState = getState();
             if (preprocessState === State.ifIncluding) {
                 stateStack[stateStack.length - 1] = State.elseExcluding;
-                const pos = scanEndif(params.text, params.pos, params.end);
-                if (pos >= 0) {
-                    params.pos = pos;
-                }
+                skipBlock(params);
             }
             else if (preprocessState === State.ifExcluding) {
                 stateStack[stateStack.length - 1] = State.elseIncluding;
+                if (!inIncludedBlock()) {
+                    skipBlock(params);
+                }
             }
         }
 
-        function scanElseOrEndif(text: string, pos: number, end: number) {
-            const params: PreprocessParams = {
-              text,
-              posCommentStart: -1,
-              posCommentEnd: -1,
-              pos,
-              end,
-            };
+        function scanElseOrEndif(params: PreprocessParams) {
+            let ret = PreprocessReturn.noop;
+            const depth = stateStack.length;
+            let pos = params.pos;
             do {
-              nextComment(params);
-              if (params.pos <= pos) break; // make sure move forwards
+                nextComment(params);
+                if (params.pos <= pos) break; // make sure move forwards
 
-              const kind = scanKind(params.text, params.posCommentStart, params.posCommentEnd);
-              if (kind === Kind.else) {
-                  onElse(params);
-                  return params.pos;
-              }
-              else if (kind === Kind.endif) {
-                  onEndif();
-                  return params.pos;
-              }
+                ret = preprocess(params);
+                if (ret === PreprocessReturn.skip) 
+                {
+                  if (stateStack.length < depth) break;
+                  if (inIncludedBlock()) break;
+                }
 
-              params.posCommentStart = -1;
-              params.posCommentEnd = -1;
-              pos = params.pos;
+                params.posCommentStart = -1;
+                params.posCommentEnd = -1;
+                pos = params.pos;
             } while (pos < params.end);
-            return -1;
+            return ret;
+        }
+
+        /**
+         * If `scanElseOrEndif()` return `noop`, `params` won't be modified.
+         * If `scanElseOrEndif()` return `skip`, `params.pos` could be modified.
+         */
+        function skipBlock(params: PreprocessParams) {
+            const params_1: PreprocessParams = {
+                text: params.text,
+                posCommentStart: -1,
+                posCommentEnd: -1,
+                pos: params.pos,
+                end: params.end,
+            };
+            const ret_1 = scanElseOrEndif(params_1);
+            if (ret_1 === PreprocessReturn.skip) {
+                params.pos = params_1.pos;
+            }
         }
 
         interface PreprocessParams {
@@ -3142,10 +3139,7 @@ namespace ts {
                     break;
                 case Kind.ifFalse:
                     stateStack.push(State.ifExcluding);
-                    const pos = scanElseOrEndif(params.text, params.pos, params.end);
-                    if (pos >= 0) {
-                        params.pos = pos;
-                    }
+                    skipBlock(params);
                     break;
                 case Kind.else:
                     onElse(params);

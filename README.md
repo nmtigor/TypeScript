@@ -1,104 +1,155 @@
+# Preprocessor Comments
 
-# TypeScript
+In some folder `ts_proj/`, adding to `tsconfig.json` 
+```json
+{
+  "compilerOptions": {
+    "preprocessor": ["DEBUG_123"],
+  },
+}
+```
+then invoking
+```sh
+node /path_to/TypeScript/built/local/tsc.js -p /path_to/ts_proj
+```
+then following TS codes
+```ts
+// #if DEBUG_123
+  var dump = "// #endif";
+// #else
+  var dump = true;
+// #endif
+```
+```ts
+// #if !DEBUG_123
+  var dump = true;
+// #else
+  var dump = "// #endif";
+// #endif
+```
+```ts
+// #if DEBUG_123
+  var dump = "// #endif";
+// #else
+  // #if DEBUG_456
+    var dump = 123;
+  // #else
+    var dump = true;
+  // #endif
+  dump = "ops";
+// #endif
+```
+```ts
+// #if !DEBUG_123
+  // #if DEBUG_456
+    var dump = true;
+  // #else
+    var dump = "// #endif";
+  // #endif
+  dump = "ops";
+// #else
+  var dump = 123;
+// #endif
+```
+```ts
+// #if DEBUG_123
+  // #if DEBUG_456
+    var dump = true;
+  // #else
+    var dump = "// #endif";
+  // #endif
+// #endif
+```
+all emit
+```js
+var dump = "// #endif";
+```
+---
 
-[![GitHub Actions CI](https://github.com/microsoft/TypeScript/workflows/CI/badge.svg)](https://github.com/microsoft/TypeScript/actions?query=workflow%3ACI)
-[![Devops Build Status](https://dev.azure.com/typescript/TypeScript/_apis/build/status/Typescript/node10)](https://dev.azure.com/typescript/TypeScript/_build?definitionId=7)
-[![npm version](https://badge.fury.io/js/typescript.svg)](https://www.npmjs.com/package/typescript)
-[![Downloads](https://img.shields.io/npm/dm/typescript.svg)](https://www.npmjs.com/package/typescript)
+Logical operators `!`, `&&`, `||` are suported. So following codes
 
-[TypeScript](https://www.typescriptlang.org/) is a language for application-scale JavaScript. TypeScript adds optional types to JavaScript that support tools for large-scale JavaScript applications for any browser, for any host, on any OS. TypeScript compiles to readable, standards-based JavaScript. Try it out at the [playground](https://www.typescriptlang.org/play/), and stay up to date via [our blog](https://blogs.msdn.microsoft.com/typescript) and [Twitter account](https://twitter.com/typescript).
+```ts
+/* #if A || B && !C */
+```
+```ts
+/*#if((A||B)&&!C)*/
+```
+are valid preprocessor comments.
 
-Find others who are using TypeScript at [our community page](https://www.typescriptlang.org/community/).
+## Grammar
 
-## Installing
+<pre>
+TermDirective:
+    #if
+NoTermDirective:
+    #else
+    #endif
+Whitespace:
+    ch+ which `isWhiteSpaceSingleLine(ch)`
+NameStart:
+    [A-Za-z_]
+NamePart:
+    [A-Za-z_0-9]
+Name:
+    NameStart NamePart*
+Term:
+    Name
+    ! Whitespace? Term
+    Term Whitespace? && Whitespace? Term
+    Term Whitespace? || Whitespace? Term
+    ( Whitespace? Term Whitespace? )
+Kind:
+    TermDirective Whitespace Term
+    TermDirective ( Whitespace? Term Whitespace? )
+    NoTermDirective
+PreprocessorComment:
+    /* Whitespace? Kind Whitespace? */
+    // Whitespace? Kind Whitespace? EndOfLine
+</pre>
+---
 
-For the latest stable version:
+## Further Development
 
-```bash
-npm install -g typescript
+Backticks (``` ` ```) strings are currently not supported. So following codes
+```ts
+// #if !A
+  var dump = 'abc';
+// #else
+  var dump = `/* #endif */`;
+/* #endif */
+```
+emit (with "error TS1160: Unterminated template literal.")
+```js
+var dump = 'abc';
+";\n/* #endif */\n";
+```
+But
+```ts
+// #if !A
+  var dump = 'abc';
+// #else
+  var dump = `// #endif`;
+/* #endif */
+```
+emit correctly
+```js
+var dump = 'abc';
+```
+because ``` // #endif`; ``` is not a valid preprocessor comment, so treated as normal codes.
+
+So, although it's really rare, **don't let valid preprocessor comments appear in backticks strings in excluded codes!** If you have to, use string template instead:
+```ts
+// #if !A
+  var dump = 'abc';
+// #else
+  var dump = `${'/* #endif */'}`;
+/* #endif */
+```
+which emit correctly
+```js
+var dump = 'abc';
+
 ```
 
-For our nightly builds:
+Enjoy!
 
-```bash
-npm install -g typescript@next
-```
-
-## Contribute
-
-There are many ways to [contribute](https://github.com/microsoft/TypeScript/blob/main/CONTRIBUTING.md) to TypeScript.
-* [Submit bugs](https://github.com/microsoft/TypeScript/issues) and help us verify fixes as they are checked in.
-* Review the [source code changes](https://github.com/microsoft/TypeScript/pulls).
-* Engage with other TypeScript users and developers on [StackOverflow](https://stackoverflow.com/questions/tagged/typescript).
-* Help each other in the [TypeScript Community Discord](https://discord.gg/typescript).
-* Join the [#typescript](https://twitter.com/search?q=%23TypeScript) discussion on Twitter.
-* [Contribute bug fixes](https://github.com/microsoft/TypeScript/blob/main/CONTRIBUTING.md).
-* Read the archived language specification ([docx](https://github.com/microsoft/TypeScript/blob/main/doc/TypeScript%20Language%20Specification%20-%20ARCHIVED.docx?raw=true),
- [pdf](https://github.com/microsoft/TypeScript/blob/main/doc/TypeScript%20Language%20Specification%20-%20ARCHIVED.pdf?raw=true), [md](https://github.com/microsoft/TypeScript/blob/main/doc/spec-ARCHIVED.md)).
-
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see
-the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com)
-with any additional questions or comments.
-
-## Documentation
-
-*  [TypeScript in 5 minutes](https://www.typescriptlang.org/docs/handbook/typescript-in-5-minutes.html)
-*  [Programming handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
-*  [Homepage](https://www.typescriptlang.org/)
-
-## Building
-
-In order to build the TypeScript compiler, ensure that you have [Git](https://git-scm.com/downloads) and [Node.js](https://nodejs.org/) installed.
-
-Clone a copy of the repo:
-
-```bash
-git clone https://github.com/microsoft/TypeScript.git
-```
-
-Change to the TypeScript directory:
-
-```bash
-cd TypeScript
-```
-
-Install [Gulp](https://gulpjs.com/) tools and dev dependencies:
-
-```bash
-npm install -g gulp
-npm ci
-```
-
-Use one of the following to build and test:
-
-```
-gulp local             # Build the compiler into built/local.
-gulp clean             # Delete the built compiler.
-gulp LKG               # Replace the last known good with the built one.
-                       # Bootstrapping step to be executed when the built compiler reaches a stable state.
-gulp tests             # Build the test infrastructure using the built compiler.
-gulp runtests          # Run tests using the built compiler and test infrastructure.
-                       # You can override the specific suite runner used or specify a test for this command.
-                       # Use --tests=<testPath> for a specific test and/or --runner=<runnerName> for a specific suite.
-                       # Valid runners include conformance, compiler, fourslash, project, user, and docker
-                       # The user and docker runners are extended test suite runners - the user runner
-                       # works on disk in the tests/cases/user directory, while the docker runner works in containers.
-                       # You'll need to have the docker executable in your system path for the docker runner to work.
-gulp runtests-parallel # Like runtests, but split across multiple threads. Uses a number of threads equal to the system
-                       # core count by default. Use --workers=<number> to adjust this.
-gulp baseline-accept   # This replaces the baseline test results with the results obtained from gulp runtests.
-gulp lint              # Runs eslint on the TypeScript source.
-gulp help              # List the above commands.
-```
-
-
-## Usage
-
-```bash
-node built/local/tsc.js hello.ts
-```
-
-
-## Roadmap
-
-For details on our planned features and future direction please refer to our [roadmap](https://github.com/microsoft/TypeScript/wiki/Roadmap).
