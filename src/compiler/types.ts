@@ -6075,6 +6075,7 @@ namespace ts {
         emitDecoratorMetadata?: boolean;
         exactOptionalPropertyTypes?: boolean;
         experimentalDecorators?: boolean;
+        preprocessor?: string[];
         forceConsistentCasingInFileNames?: boolean;
         /*@internal*/generateCpuProfile?: string;
         /*@internal*/generateTrace?: string;

@@ -919,6 +919,16 @@ namespace ts {
             description: Diagnostics.Emit_design_type_metadata_for_decorated_declarations_in_source_files,
             defaultValueDescription: "false",
         },
+        {
+            name: "preprocessor",
+            type: "list",
+            element: {
+                name: "preprocessorName",
+                type: "string",
+            },
+            affectsEmit: true,
+            // category: Diagnostics.Experimental_Options,
+        },
 
         // Advanced
         {
@@ -2607,6 +2617,17 @@ namespace ts {
         const parsedConfig = parseConfig(json, sourceFile, host, basePath, configFileName, resolutionStack, errors, extendedConfigCache);
         const { raw } = parsedConfig;
         const options = extend(existingOptions, parsedConfig.options || {});
+
+        //kkkk add support "extends"
+        preprocessorEnabled = false;
+        clearPreprocessorName();
+        if (options.preprocessor) {
+            preprocessorEnabled = true;
+            forEach(options.preprocessor, name => {
+                addPreprocessorName(name.trim());
+            })
+        }
+
         const watchOptions = existingWatchOptions && parsedConfig.watchOptions ?
             extend(existingWatchOptions, parsedConfig.watchOptions) :
             parsedConfig.watchOptions || existingWatchOptions;
