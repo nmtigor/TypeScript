@@ -379,11 +379,6 @@ interface MultiCacheQueryOptions extends CacheQueryOptions {
     cacheName?: string;
 }
 
-interface NavigationPreloadState {
-    enabled?: boolean;
-    headerValue?: string;
-}
-
 interface NotificationAction {
     action: string;
     icon?: string;
@@ -2710,6 +2705,7 @@ interface ReadableStream<R = any> {
     pipeThrough<T>(transform: ReadableWritablePair<T, R>, options?: StreamPipeOptions): ReadableStream<T>;
     pipeTo(destination: WritableStream<R>, options?: StreamPipeOptions): Promise<void>;
     tee(): [ReadableStream<R>, ReadableStream<R>];
+    forEach(callbackfn: (value: any, key: number, parent: ReadableStream<R>) => void, thisArg?: any): void;
 }
 
 declare var ReadableStream: {
@@ -2922,7 +2918,6 @@ interface ServiceWorkerRegistrationEventMap {
 interface ServiceWorkerRegistration extends EventTarget {
     readonly active: ServiceWorker | null;
     readonly installing: ServiceWorker | null;
-    readonly navigationPreload: NavigationPreloadManager;
     onupdatefound: ((this: ServiceWorkerRegistration, ev: Event) => any) | null;
     readonly pushManager: PushManager;
     readonly scope: string;
@@ -5733,7 +5728,7 @@ interface PerformanceObserverCallback {
 }
 
 interface QueuingStrategySize<T = any> {
-    (chunk: T): number;
+    (chunk?: T): number;
 }
 
 interface TransformerFlushCallback<O> {
