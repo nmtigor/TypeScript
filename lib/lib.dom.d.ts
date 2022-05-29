@@ -2889,6 +2889,7 @@ interface CSSStyleDeclaration {
     fontStyle: string;
     fontSynthesis: string;
     fontVariant: string;
+    /** @deprecated */
     fontVariantAlternates: string;
     fontVariantCaps: string;
     fontVariantEastAsian: string;
