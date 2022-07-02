@@ -2016,6 +2016,8 @@ namespace ts {
             case SyntaxKind.AwaitExpression:
             case SyntaxKind.MetaProperty:
                 return true;
+            case SyntaxKind.ExpressionWithTypeArguments:
+                return !isHeritageClause(node.parent);
             case SyntaxKind.QualifiedName:
                 while (node.parent.kind === SyntaxKind.QualifiedName) {
                     node = node.parent;
@@ -2197,9 +2199,6 @@ namespace ts {
     }
 
     function isVariableDeclarationInitializedWithRequireHelper(node: Node, allowAccessedRequire: boolean) {
-        if (node.kind === SyntaxKind.BindingElement) {
-            node = node.parent.parent;
-        }
         return isVariableDeclaration(node) &&
             !!node.initializer &&
             isRequireCall(allowAccessedRequire ? getLeftmostAccessExpression(node.initializer) : node.initializer, /*requireStringLiteralLikeArgument*/ true);
@@ -6315,8 +6314,9 @@ namespace ts {
      */
     function isFileForcedToBeModuleByFormat(file: SourceFile): true | undefined {
         // Excludes declaration files - they still require an explicit `export {}` or the like
-        // for back compat purposes.
-        return file.impliedNodeFormat === ModuleKind.ESNext && !file.isDeclarationFile ? true : undefined;
+        // for back compat purposes. The only non-declaration files _not_ forced to be a module are `.js` files
+        // that aren't esm-mode (meaning not in a `type: module` scope).
+        return (file.impliedNodeFormat === ModuleKind.ESNext || (fileExtensionIsOneOf(file.fileName, [Extension.Cjs, Extension.Cts]))) && !file.isDeclarationFile ? true : undefined;
     }
 
     export function getSetExternalModuleIndicator(options: CompilerOptions): (file: SourceFile) => void {
@@ -6325,7 +6325,7 @@ namespace ts {
             case ModuleDetectionKind.Force:
                 // All non-declaration files are modules, declaration files still do the usual isFileProbablyExternalModule
                 return (file: SourceFile) => {
-                    file.externalModuleIndicator = !file.isDeclarationFile || isFileProbablyExternalModule(file);
+                    file.externalModuleIndicator = isFileProbablyExternalModule(file) || !file.isDeclarationFile || undefined;
                 };
             case ModuleDetectionKind.Legacy:
                 // Files are modules if they have imports, exports, or import.meta
@@ -6385,7 +6385,8 @@ namespace ts {
     }
 
     export function getEmitModuleDetectionKind(options: CompilerOptions) {
-        return options.moduleDetection || ModuleDetectionKind.Auto;
+        return options.moduleDetection ||
+            (getEmitModuleKind(options) === ModuleKind.Node16 || getEmitModuleKind(options) === ModuleKind.NodeNext ? ModuleDetectionKind.Force : ModuleDetectionKind.Auto);
     }
 
     export function hasJsonModuleEmitEnabled(options: CompilerOptions) {
