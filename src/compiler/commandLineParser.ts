@@ -2668,10 +2668,11 @@ namespace ts {
         //kkkk add support "extends"
         preprocessorEnabled = false;
         clearPreprocessorName();
-        if (options.preprocessor) {
+        if( options.preprocessor)
+        {
             preprocessorEnabled = true;
-            forEach(options.preprocessor, name => {
-                addPreprocessorName(name.trim());
+            forEach( options.preprocessor, name => {
+                addPreprocessorName( name.trim());
             })
         }
 

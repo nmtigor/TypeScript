@@ -601,13 +601,14 @@ namespace ts {
                             pos++;
                         }
                         canConsumeStar = false;
-                        if (preprocessorEnabled) {
+                        if( preprocessorEnabled)
+                        {
                             preprocessParams.text = text;
                             preprocessParams.posCommentStart = posCommentStart;
                             preprocessParams.posCommentEnd = pos;
                             preprocessParams.pos = pos;
                             preprocessParams.end = text.length;
-                            preprocess(preprocessParams);
+                            preprocess( preprocessParams);
                             pos = preprocessParams.pos;
                         }
                         continue;
@@ -623,13 +624,14 @@ namespace ts {
                             pos++;
                         }
                         canConsumeStar = false;
-                        if (preprocessorEnabled && pos < text.length) {
+                        if( preprocessorEnabled && pos < text.length)
+                        {
                             preprocessParams.text = text;
                             preprocessParams.posCommentStart = posCommentStart;
                             preprocessParams.posCommentEnd = pos - 2;
                             preprocessParams.pos = pos;
                             preprocessParams.end = text.length;
-                            preprocess(preprocessParams);
+                            preprocess( preprocessParams);
                             pos = preprocessParams.pos;
                         }
                         continue;
@@ -823,8 +825,9 @@ namespace ts {
                                 }
                                 pos++;
                             }
-                            if (preprocessorEnabled
-                             && isPreprocessorComment(text, posCommentStart, pos)) {
+                            if( preprocessorEnabled
+                             && isPreprocessorComment( text, posCommentStart, pos))
+                            {
                                 pos++;
                                 continue;
                             }
@@ -837,12 +840,13 @@ namespace ts {
                                 }
                                 pos++;
                             }
-                            if (preprocessorEnabled
+                            if( preprocessorEnabled
                              && pos < text.length
-                             && isPreprocessorComment(text, posCommentStart, pos-2)) {
+                             && isPreprocessorComment( text, posCommentStart, pos-2))
+                            {
                                 pos++;
                                 continue;
-                             }
+                            }
                         }
 
                         if (collecting) {
@@ -1812,13 +1816,15 @@ namespace ts {
                             }
                             const posCommentEnd = pos;
 
-                            if (preprocessorEnabled) {
+                            if( preprocessorEnabled)
+                            {
                                 preprocessParams.text = text;
                                 preprocessParams.posCommentStart = posCommentStart;
                                 preprocessParams.posCommentEnd = posCommentEnd;
                                 preprocessParams.pos = pos;
                                 preprocessParams.end = end;
-                                if (preprocess(preprocessParams) === PreprocessReturn.skip) {
+                                if( preprocess( preprocessParams) === PreprocessReturn.skip)
+                                {
                                     pos = preprocessParams.pos;
                                     continue;
                                 }
@@ -1866,13 +1872,15 @@ namespace ts {
                             }
                             const posCommentEnd = commentClosed ? pos - 2 : pos;
 
-                            if (preprocessorEnabled) {
+                            if( preprocessorEnabled)
+                            {
                                 preprocessParams.text = text;
                                 preprocessParams.posCommentStart = posCommentStart;
                                 preprocessParams.posCommentEnd = posCommentEnd;
                                 preprocessParams.pos = pos;
                                 preprocessParams.end = end;
-                                if (preprocess(preprocessParams) === PreprocessReturn.skip) {
+                                if( preprocess( preprocessParams) === PreprocessReturn.skip)
+                                {
                                     pos = preprocessParams.pos;
                                     continue;
                                 }
@@ -2693,27 +2701,30 @@ namespace ts {
     }
 
     export let preprocessorEnabled = false;
-    export function addPreprocessorName(preprocessorName: string) { preprocessor.names.add(preprocessorName); }
+    export function addPreprocessorName(preprocessorName:string) { preprocessor.names.add( preprocessorName); }
     export function clearPreprocessorName() { preprocessor.names.clear(); }
 
     /** Helper */
     const preprocessParams = <{
-      text: string;
-      posCommentStart: number;
-      posCommentEnd: number;
-      pos: number;
-      end: number;
+        text:string;
+        posCommentStart:number;
+        posCommentEnd:number;
+        pos:number;
+        end:number;
     }>Object.create(null);
 
-    namespace preprocessor {
+    namespace preprocessor
+    {
         export const names = new Set<string>();
 
-        function isNameStart(ch: number) {
+        function isNameStart( ch:number)
+        {
             return ch >= CharacterCodes.A && ch <= CharacterCodes.Z 
                 || ch >= CharacterCodes.a && ch <= CharacterCodes.z
                 || ch === CharacterCodes._;
         }
-        function isNamePart(ch: number) {
+        function isNamePart( ch:number)
+        {
             return ch >= CharacterCodes.A && ch <= CharacterCodes.Z
                 || ch >= CharacterCodes.a && ch <= CharacterCodes.z
                 || ch >= CharacterCodes._0 && ch <= CharacterCodes._9
@@ -2732,92 +2743,137 @@ namespace ts {
             lowest = 0,
         }
 
-        interface ScanTermParams {
-            readonly text: string;
-            pos: number;
-            readonly pos1: number;
+        interface ScanTermParams
+        {
+            readonly text:string;
+            pos:number;
+            readonly pos1:number;
         }
         /**
          * `!TERM`, `TERM`, `TERM && TERM`, `TERM || TERM`
          */
-        function scanTerm(params: ScanTermParams, precedence = Precedence.lowest) {
-            let ret: boolean | undefined;
+        function scanTerm( params:ScanTermParams, precedence = Precedence.lowest)
+        {
+            let ret:boolean | undefined;
 
             const text = params.text;
             let pos = params.pos;
             const pos1 = params.pos1;
-            while (pos < pos1) {
-                let ch = text.charCodeAt(pos);
-                if (ch === CharacterCodes.exclamation) {
-                    if (ret !== undefined) { ret = undefined; break; }
+            while( pos < pos1)
+            {
+                let ch = text.charCodeAt( pos);
+                if( ch === CharacterCodes.exclamation)
+                {
+                    if( ret !== undefined)
+                    { 
+                        ret = undefined; 
+                        break;
+                    }
 
                     params.pos = pos + 1;
-                    const ret1 = scanTerm(params, Precedence.logicalNot);
-                    if (ret1 === undefined) ret = undefined;
+                    const ret1 = scanTerm( params, Precedence.logicalNot);
+                    if( ret1 === undefined) ret = undefined;
                     else ret = !ret1;
                     break;
                 }
-                else if (isNameStart(ch)) {
-                    if (ret !== undefined) { ret = undefined; break; }
+                else if( isNameStart( ch))
+                {
+                    if( ret !== undefined)
+                    { 
+                        ret = undefined;
+                        break;
+                    }
 
                     const posName0 = pos;
-                    while (++pos < pos1 && isNamePart(text.charCodeAt(pos))) {}
+                    while( ++pos < pos1 && isNamePart( text.charCodeAt( pos))) {}
                     const posName1 = pos;
-                    ret = names.has(text.slice(posName0, posName1));
+                    ret = names.has( text.slice( posName0, posName1));
                 }
-                else if (ch === CharacterCodes.ampersand) {
-                    if (++pos >= pos1 || text.charCodeAt(pos) !== CharacterCodes.ampersand) { ret = undefined; break; }
-                    if (ret === undefined) break;
-                    if (precedence > Precedence.logicalAnd) break; // `!A && B`
+                else if( ch === CharacterCodes.ampersand)
+                {
+                    if( ++pos >= pos1 || text.charCodeAt( pos) !== CharacterCodes.ampersand)
+                    { 
+                        ret = undefined; 
+                        break;
+                    }
+                    if( ret === undefined)
+                        break;
+                    if( precedence > Precedence.logicalAnd)
+                        break; // `!A && B`
 
                     params.pos = pos + 1;
-                    const ret1 = scanTerm(params, Precedence.logicalAnd);
-                    if (ret1 === undefined ) ret = undefined;
+                    const ret1 = scanTerm( params, Precedence.logicalAnd);
+                    if( ret1 === undefined ) ret = undefined;
                     else ret &&= ret1;
                     break;
                 }
-                else if (ch === CharacterCodes.bar) {
-                    if (++pos >= pos1 || text.charCodeAt(pos) !== CharacterCodes.bar) { ret = undefined; break; }
-                    if (ret === undefined) break;
-                    if (precedence > Precedence.logicalOr) break; // `!A || B`, `A && B || C`
+                else if( ch === CharacterCodes.bar)
+                {
+                    if( ++pos >= pos1 || text.charCodeAt( pos) !== CharacterCodes.bar)
+                    { 
+                        ret = undefined; 
+                        break;
+                    }
+                    if( ret === undefined)
+                        break;
+                    if( precedence > Precedence.logicalOr)
+                        break; // `!A || B`, `A && B || C`
 
                     params.pos = pos + 1;
-                    const ret1 = scanTerm(params, Precedence.logicalOr);
-                    if (ret1 === undefined ) ret = undefined;
+                    const ret1 = scanTerm( params, Precedence.logicalOr);
+                    if( ret1 === undefined ) ret = undefined;
                     else ret ||= ret1;
                     break;
                 }
-                else if (ch === CharacterCodes.openParen) {
-                    if (ret !== undefined) { ret = undefined; break; }
+                else if( ch === CharacterCodes.openParen)
+                {
+                    if( ret !== undefined)
+                    { 
+                        ret = undefined; 
+                        break;
+                    }
 
                     params.pos = pos + 1;
                     groupingDepth++;
-                    ret = scanTerm(params);
-                    if (ret === undefined) break;
+                    ret = scanTerm( params);
+                    if( ret === undefined)
+                        break;
 
                     pos = params.pos;
-                    if (pos < pos1 && isWhiteSpaceSingleLine(text.charCodeAt(pos))) {
-                        while (++pos < pos1 && isWhiteSpaceSingleLine(text.charCodeAt(pos))) {}
+                    if( pos < pos1 && isWhiteSpaceSingleLine( text.charCodeAt( pos)))
+                    {
+                        while( ++pos < pos1 && isWhiteSpaceSingleLine( text.charCodeAt( pos))) {}
                     }
-                    if (pos < pos1 && text.charCodeAt(pos) === CharacterCodes.closeParen) {
-                        if (groupingDepth > 0) {
+                    if( pos < pos1 && text.charCodeAt( pos) === CharacterCodes.closeParen)
+                    {
+                        if( groupingDepth > 0)
+                        {
                             groupingDepth--;
                             pos++;
                         }
                         else ret = undefined;
                     }
                     else ret = undefined; 
-                    if (ret === undefined) { params.pos = pos; break; }
+                    if( ret === undefined)
+                    { 
+                        params.pos = pos; 
+                        break;
+                    }
                 }
-                else if (isWhiteSpaceSingleLine(ch)) {
-                    while (++pos < pos1 && isWhiteSpaceSingleLine(text.charCodeAt(pos))) {}
+                else if( isWhiteSpaceSingleLine( ch))
+                {
+                    while( ++pos < pos1 && isWhiteSpaceSingleLine( text.charCodeAt( pos))) {}
                 }
-                else if (ch === CharacterCodes.closeParen) { // `(A)`
-                    if (groupingDepth === 0) ret = undefined;
+                else if( ch === CharacterCodes.closeParen)
+                { // `(A)`
+                    if( groupingDepth === 0) ret = undefined;
                     params.pos = pos;
                     break;
                 }
-                else { ret = undefined; break; }
+                else { 
+                    ret = undefined;
+                    break;
+                }
             }
             return ret;
         }
@@ -2836,101 +2892,126 @@ namespace ts {
         /**
          * `#if TERM`, `#else`, `#endif`
          */
-        function scanKind(text: string, pos: number, pos1: number): Kind {
-            while (pos < pos1) {
-                let ch = text.charCodeAt(pos);
-                if (ch === CharacterCodes.hash) {
-                    if (pos1 - pos < directiveMinlen) break;
+        function scanKind( text:string, pos:number, pos1:number):Kind
+        {
+            while( pos < pos1)
+            {
+                let ch = text.charCodeAt( pos);
+                if( ch === CharacterCodes.hash)
+                {
+                    if( pos1 - pos < directiveMinlen)
+                        break;
 
-                    const directiveStr = text.slice(pos, Math.min(pos+directiveMaxlen, pos1));
-                    const match = directiveRegEx.exec(directiveStr);
-                    if (!match) break;
+                    const directiveStr = text.slice( pos, Math.min( pos+directiveMaxlen, pos1));
+                    const match = directiveRegEx.exec( directiveStr);
+                    if( !match)
+                        break;
 
                     pos += 1 + match[1].length;
-                    switch (match[1]) {
+                    switch( match[1])
+                    {
                         case "if":
-                            if (pos < pos1) {
-                                let b: boolean | undefined;
-                                ch = text.charCodeAt(pos);
+                            if( pos < pos1)
+                            {
+                                let b:boolean | undefined;
+                                ch = text.charCodeAt( pos);
                                 groupingDepth = 0;
-                                if (isWhiteSpaceSingleLine(ch)) {
-                                    b = scanTerm({ text, pos: pos+1, pos1 });
+                                if( isWhiteSpaceSingleLine( ch))
+                                {
+                                    b = scanTerm({ text, pos:pos+1, pos1 });
                                 }
-                                else if (ch === CharacterCodes.openParen) {
+                                else if( ch === CharacterCodes.openParen)
+                                {
                                     b = scanTerm({ text, pos, pos1 });
                                 }
-                                if (groupingDepth !== 0) b = undefined;
-                                if (b === true)
-                                  return Kind.ifTrue;
-                                else if (b === false)
-                                  return Kind.ifFalse;
+                                if( groupingDepth !== 0) b = undefined;
+                                if( b === true)
+                                    return Kind.ifTrue;
+                                else if( b === false)
+                                    return Kind.ifFalse;
                             }
                             break;
                         case "else":
-                            if (pos < pos1) {
-                                while (isWhiteSpaceSingleLine(text.charCodeAt(pos))) {
-                                  if (++pos >= pos1)
-                                    return Kind.else;
+                            if( pos < pos1)
+                            {
+                                while( isWhiteSpaceSingleLine( text.charCodeAt( pos)))
+                                {
+                                  if( ++pos >= pos1)
+                                      return Kind.else;
                                 }
                             }
                             else
                               return Kind.else;
                             break;
                         case "endif":
-                            if (pos < pos1) {
-                                while (isWhiteSpaceSingleLine(text.charCodeAt(pos))) {
-                                  if (++pos >= pos1)
-                                    return Kind.endif;
+                            if( pos < pos1)
+                            {
+                                while( isWhiteSpaceSingleLine( text.charCodeAt( pos)))
+                                {
+                                  if( ++pos >= pos1)
+                                      return Kind.endif;
                                 }
                             }
                             else
-                              return Kind.endif;
+                                return Kind.endif;
                             break;
                     }
                     break;
                 }
-                else if (isWhiteSpaceSingleLine(ch)) {
-                    while (++pos < pos1 && isWhiteSpaceSingleLine(text.charCodeAt(pos))) {}
+                else if( isWhiteSpaceSingleLine( ch))
+                {
+                    while( ++pos < pos1 && isWhiteSpaceSingleLine( text.charCodeAt( pos))) {}
                 }
                 else break;
             }
             return Kind.invalid;
         }
 
-        export function isPreprocessorComment(text: string, posCommentStart: number, posCommentEnd: number) {
+        export function isPreprocessorComment( text:string, posCommentStart:number, posCommentEnd:number)
+        {
             return scanKind(text, posCommentStart, posCommentEnd) !== Kind.invalid;
         }
 
-        function isHexDigit(ch: number) {
+        function isHexDigit( ch:number)
+        {
           return ch >= CharacterCodes.A && ch <= CharacterCodes.F
               || ch >= CharacterCodes.a && ch <= CharacterCodes.f
               || ch >= CharacterCodes._0 && ch <= CharacterCodes._9;
         }
 
-        function skipEscapeSequence(text: string, pos: number, end: number) {
-            if (pos >= end)
-              return pos;
+        function skipEscapeSequence( text:string, pos:number, end:number)
+        {
+            if( pos >= end)
+                return pos;
 
-            const ch = text.charCodeAt(pos);
-            if (ch === CharacterCodes.u) {
+            const ch = text.charCodeAt( pos);
+            if( ch === CharacterCodes.u)
+            {
                 pos++;
-                if (pos < end && text.charCodeAt(pos) === CharacterCodes.openBrace) {
+                if( pos < end && text.charCodeAt( pos) === CharacterCodes.openBrace)
+                {
                     pos++;
-                    while (pos < end && isHexDigit(text.charCodeAt(pos))) {
+                    while( pos < end && isHexDigit( text.charCodeAt( pos)))
+                    {
                         pos++;
                     }
-                    if (pos < end && text.charCodeAt(pos) === CharacterCodes.closeBrace) {
+                    if( pos < end && text.charCodeAt( pos) === CharacterCodes.closeBrace)
+                    {
                         pos++;
                     }
                 }
                 else {
-                    if (pos < end && isHexDigit(text.charCodeAt(pos))) {
+                    if( pos < end && isHexDigit( text.charCodeAt( pos)))
+                    {
                         pos++;
-                        if (pos < end && isHexDigit(text.charCodeAt(pos))) {
+                        if( pos < end && isHexDigit( text.charCodeAt( pos)))
+                        {
                             pos++;
-                            if (pos < end && isHexDigit(text.charCodeAt(pos))) {
+                            if( pos < end && isHexDigit( text.charCodeAt( pos)))
+                            {
                                 pos++;
-                                if (pos < end && isHexDigit(text.charCodeAt(pos))) {
+                                if( pos < end && isHexDigit( text.charCodeAt( pos)))
+                                {
                                     pos++;
                                 }
                             }
@@ -2938,18 +3019,23 @@ namespace ts {
                     }
                 }
             }
-            else if (ch === CharacterCodes.x) {
+            else if( ch === CharacterCodes.x)
+            {
                 pos++;
-                if (pos < end && isHexDigit(text.charCodeAt(pos))) {
+                if( pos < end && isHexDigit( text.charCodeAt( pos)))
+                {
                     pos++;
-                    if (pos < end && isHexDigit(text.charCodeAt(pos))) {
+                    if( pos < end && isHexDigit( text.charCodeAt( pos)))
+                    {
                         pos++;
                     }
                 }
             }
-            else if (ch === CharacterCodes.carriageReturn) {
+            else if( ch === CharacterCodes.carriageReturn)
+            {
                 pos++;
-                if (pos < end && text.charCodeAt(pos) === CharacterCodes.lineFeed) {
+                if( pos < end && text.charCodeAt( pos) === CharacterCodes.lineFeed)
+                {
                     pos++;
                 }
             }
@@ -2964,28 +3050,35 @@ namespace ts {
          * kkkk regular expression
          * kkkk template literal
          */
-        function nextComment(params: PreprocessParams): void {
+        function nextComment( params:PreprocessParams):void
+        {
             let pos = params.pos;
             const end = params.end;
             const text = params.text;
-            while (pos < end) {
-                const ch = text.charCodeAt(pos);
-                if (ch === CharacterCodes.doubleQuote 
-                 || ch === CharacterCodes.singleQuote) {
+            while( pos < end)
+            {
+                const ch = text.charCodeAt( pos);
+                if( ch === CharacterCodes.doubleQuote 
+                 || ch === CharacterCodes.singleQuote)
+                 {
                     pos++;
                     // const pos_save = pos;
-                    while (pos < end) {
-                        const ch1 = text.charCodeAt(pos);
-                        if (ch1 === ch) {
+                    while( pos < end)
+                    {
+                        const ch1 = text.charCodeAt( pos);
+                        if( ch1 === ch)
+                        {
                             pos++;
                             break;
                         }
 
-                        if (ch1 === CharacterCodes.backslash) {
-                            pos = skipEscapeSequence(text, pos+1, end);
+                        if( ch1 === CharacterCodes.backslash)
+                        {
+                            pos = skipEscapeSequence( text, pos+1, end);
                             continue;
                         }
-                        else if (isLineBreak(ch1)) {
+                        else if( isLineBreak( ch1))
+                        {
                             pos++;
                             // pos = pos_save;
                             break;
@@ -2993,17 +3086,19 @@ namespace ts {
                         pos++;
                     }
                 }
-                else if (ch === CharacterCodes.slash) {
+                else if( ch === CharacterCodes.slash)
+                {
                     pos++;
                     // Single-line comment
-                    if (text.charCodeAt(pos) === CharacterCodes.slash) {
+                    if( text.charCodeAt( pos) === CharacterCodes.slash)
+                    {
                         pos++;
                         params.posCommentStart = pos;
 
-                        while (pos < end) {
-                            if (isLineBreak(text.charCodeAt(pos))) {
+                        while( pos < end)
+                        {
+                            if( isLineBreak( text.charCodeAt( pos)))
                                 break;
-                            }
                             pos++;
                         }
                         params.posCommentEnd = pos;
@@ -3011,26 +3106,29 @@ namespace ts {
                         break;
                     }
                     // Multi-line comment
-                    if (text.charCodeAt(pos) === CharacterCodes.asterisk) {
+                    if( text.charCodeAt( pos) === CharacterCodes.asterisk)
+                    {
                         pos++;
                         params.posCommentStart = pos;
 
-                        while (pos < end) {
-                            if (text.charCodeAt(pos) === CharacterCodes.asterisk 
-                             && text.charCodeAt(pos + 1) === CharacterCodes.slash) {
+                        while( pos < end)
+                        {
+                            if( text.charCodeAt( pos) === CharacterCodes.asterisk 
+                             && text.charCodeAt( pos + 1) === CharacterCodes.slash)
+                            {
                                 pos += 2;
                                 break;
                             }
                             pos++;
                         }
-                        if (pos < end) params.posCommentEnd = pos - 2;
+                        if( pos < end) params.posCommentEnd = pos - 2;
 
                         break;
                     }
                 }
                 else pos++;
             }
-            if (pos < end) params.pos = pos;
+            if( pos < end) params.pos = pos;
         }
 
         const enum State {
@@ -3039,24 +3137,24 @@ namespace ts {
             elseIncluding,
             elseExcluding,
         }
-        const stateStack: State[] = [];
-        function getState() {
+        const stateStack:State[] = [];
+        function getState()
+        {
           const LEN = stateStack.length;
-          if (LEN > 0) {
-            return stateStack[LEN - 1];
-          }
-          else {
-            return undefined;
-          }
+          if( LEN > 0)
+              return stateStack[LEN - 1];
+          else
+              return undefined;
         }
-        function inIncludedBlock() {
-          for (let i = stateStack.length; i--;)
+        function inIncludedBlock()
+        {
+          for( let i = stateStack.length; i--;)
           {
-            if (stateStack[i] !== State.ifIncluding
-             && stateStack[i] !== State.elseIncluding
-            ) {
-              return false;
-            }
+              if( stateStack[i] !== State.ifIncluding
+               && stateStack[i] !== State.elseIncluding
+              ) {
+                  return false;
+              }
           }
           return true;
         }
@@ -3064,7 +3162,8 @@ namespace ts {
         /**
          * Update `stateStack`.
          */
-        function onEndif() {
+        function onEndif()
+        {
             stateStack.pop();
         }
 
@@ -3072,39 +3171,47 @@ namespace ts {
          * Update `stateStack`.
          * Update `params.pos` only if skipping to the end of "#endif" comment.
          */
-        function onElse(params: PreprocessParams) {
+        function onElse( params:PreprocessParams)
+        {
             const preprocessState = getState();
-            if (preprocessState === State.ifIncluding) {
+            if( preprocessState === State.ifIncluding)
+            {
                 stateStack[stateStack.length - 1] = State.elseExcluding;
                 skipBlock(params);
             }
-            else if (preprocessState === State.ifExcluding) {
+            else if( preprocessState === State.ifExcluding)
+            {
                 stateStack[stateStack.length - 1] = State.elseIncluding;
-                if (!inIncludedBlock()) {
-                    skipBlock(params);
+                if( !inIncludedBlock())
+                {
+                    skipBlock( params);
                 }
             }
         }
 
-        function scanElseOrEndif(params: PreprocessParams) {
+        function scanElseOrEndif( params:PreprocessParams)
+        {
             let ret = PreprocessReturn.noop;
             const depth = stateStack.length;
             let pos = params.pos;
             do {
-                nextComment(params);
-                if (params.pos <= pos) break; // make sure move forwards
+                nextComment( params);
+                if( params.pos <= pos)
+                    break; // make sure move forwards
 
-                ret = preprocess(params);
-                if (ret === PreprocessReturn.skip) 
+                ret = preprocess( params);
+                if( ret === PreprocessReturn.skip) 
                 {
-                  if (stateStack.length < depth) break;
-                  if (inIncludedBlock()) break;
+                  if( stateStack.length < depth)
+                      break;
+                  if( inIncludedBlock())
+                      break;
                 }
 
                 params.posCommentStart = -1;
                 params.posCommentEnd = -1;
                 pos = params.pos;
-            } while (pos < params.end);
+            } while( pos < params.end);
             return ret;
         }
 
@@ -3112,26 +3219,28 @@ namespace ts {
          * If `scanElseOrEndif()` return `noop`, `params` won't be modified.
          * If `scanElseOrEndif()` return `skip`, `params.pos` could be modified.
          */
-        function skipBlock(params: PreprocessParams) {
-            const params_1: PreprocessParams = {
+        function skipBlock(params:PreprocessParams)
+        {
+            const params_1:PreprocessParams = {
                 text: params.text,
                 posCommentStart: -1,
                 posCommentEnd: -1,
                 pos: params.pos,
                 end: params.end,
             };
-            const ret_1 = scanElseOrEndif(params_1);
-            if (ret_1 === PreprocessReturn.skip) {
+            const ret_1 = scanElseOrEndif( params_1);
+            if( ret_1 === PreprocessReturn.skip)
+            {
                 params.pos = params_1.pos;
             }
         }
 
         interface PreprocessParams {
-            readonly text: string;
-            posCommentStart: number;
-            posCommentEnd: number;
-            pos: number;
-            readonly end: number;
+            readonly text:string;
+            posCommentStart:number;
+            posCommentEnd:number;
+            pos:number;
+            readonly end:number;
         }
         export const enum PreprocessReturn {
             noop,
@@ -3141,18 +3250,20 @@ namespace ts {
          * If return `noop`, `params` won't be modified.
          * If return `skip`, `params.pos` could be modified.
          */
-        export function preprocess(params: PreprocessParams): PreprocessReturn {
+        export function preprocess( params:PreprocessParams):PreprocessReturn
+        {
             let ret = PreprocessReturn.skip;
-            switch (scanKind(params.text, params.posCommentStart, params.posCommentEnd)) {
+            switch( scanKind( params.text, params.posCommentStart, params.posCommentEnd))
+            {
                 case Kind.ifTrue:
-                    stateStack.push(State.ifIncluding);
+                    stateStack.push( State.ifIncluding);
                     break;
                 case Kind.ifFalse:
-                    stateStack.push(State.ifExcluding);
-                    skipBlock(params);
+                    stateStack.push( State.ifExcluding);
+                    skipBlock( params);
                     break;
                 case Kind.else:
-                    onElse(params);
+                    onElse( params);
                     break;
                 case Kind.endif:
                     onEndif();
