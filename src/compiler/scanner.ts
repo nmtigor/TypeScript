@@ -2850,10 +2850,10 @@ namespace ts {
                         {
                             groupingDepth--;
                             pos++;
-                        }
-                        else ret = undefined;
-                    }
-                    else ret = undefined; 
+                        } else 
+                            ret = undefined;
+                    } else 
+                        ret = undefined; 
                     if( ret === undefined)
                     { 
                         params.pos = pos; 
@@ -2869,8 +2869,7 @@ namespace ts {
                     if( groupingDepth === 0) ret = undefined;
                     params.pos = pos;
                     break;
-                }
-                else { 
+                } else { 
                     ret = undefined;
                     break;
                 }
@@ -2939,8 +2938,7 @@ namespace ts {
                                   if( ++pos >= pos1)
                                       return Kind.else;
                                 }
-                            }
-                            else
+                            } else
                               return Kind.else;
                             break;
                         case "endif":
@@ -2951,8 +2949,7 @@ namespace ts {
                                   if( ++pos >= pos1)
                                       return Kind.endif;
                                 }
-                            }
-                            else
+                            } else
                                 return Kind.endif;
                             break;
                     }
@@ -2961,8 +2958,8 @@ namespace ts {
                 else if( isWhiteSpaceSingleLine( ch))
                 {
                     while( ++pos < pos1 && isWhiteSpaceSingleLine( text.charCodeAt( pos))) {}
-                }
-                else break;
+                } else 
+                    break;
             }
             return Kind.invalid;
         }
@@ -2999,8 +2996,7 @@ namespace ts {
                     {
                         pos++;
                     }
-                }
-                else {
+                } else {
                     if( pos < end && isHexDigit( text.charCodeAt( pos)))
                     {
                         pos++;
@@ -3038,8 +3034,8 @@ namespace ts {
                 {
                     pos++;
                 }
-            }
-            else pos++;
+            } else 
+                pos++;
             return pos;
         }
         /**
@@ -3125,8 +3121,8 @@ namespace ts {
 
                         break;
                     }
-                }
-                else pos++;
+                } else 
+                    pos++;
             }
             if( pos < end) params.pos = pos;
         }
