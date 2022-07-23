@@ -2448,7 +2448,7 @@ namespace ts {
 
         function getOverwrittenDefaultOptions() {
             const result: string[] = [];
-             const tab = makePadding(2);
+            const tab = makePadding(2);
             commandOptionsWithoutBuild.forEach(cmd => {
                 if (!compilerOptionsMap.has(cmd.name)) {
                     return;
@@ -2668,12 +2668,11 @@ namespace ts {
         //kkkk add support "extends"
         preprocessorEnabled = false;
         clearPreprocessorName();
-        if( options.preprocessor)
-        {
+        if (options.preprocessor) {
             preprocessorEnabled = true;
-            forEach( options.preprocessor, name => {
-                addPreprocessorName( name.trim());
-            })
+            forEach(options.preprocessor, name => {
+                addPreprocessorName(name.trim());
+            });
         }
 
         const watchOptions = existingWatchOptions && parsedConfig.watchOptions ?
@@ -2915,7 +2914,7 @@ namespace ts {
             if (extendedConfig && isSuccessfulParsedTsconfig(extendedConfig)) {
                 const baseRaw = extendedConfig.raw;
                 const raw = ownConfig.raw;
-                let relativeDifference: string | undefined ;
+                let relativeDifference: string | undefined;
                 const setPropertyInRawIfNotUndefined = (propertyName: string) => {
                     if (!raw[propertyName] && baseRaw[propertyName]) {
                         raw[propertyName] = map(baseRaw[propertyName], (path: string) => isRootedDiskPath(path) ? path : combinePaths(
@@ -3209,7 +3208,7 @@ namespace ts {
         if (isCompilerOptionsValue(opt, value)) {
             const optType = opt.type;
             if (optType === "list" && isArray(value)) {
-                return convertJsonOptionOfListType(opt , value, basePath, errors);
+                return convertJsonOptionOfListType(opt, value, basePath, errors);
             }
             else if (!isString(optType)) {
                 return convertJsonOptionOfCustomType(opt as CommandLineOptionOfCustomType, value as string, errors);
