@@ -950,6 +950,11 @@ namespace ts {
             description: Diagnostics.Emit_design_type_metadata_for_decorated_declarations_in_source_files,
             defaultValueDescription: false,
         },
+        {
+            name: "append_js_import",
+            type: "string",
+            affectsEmit: true,
+        },
 
         // Advanced
         {
@@ -2654,6 +2659,14 @@ namespace ts {
         const parsedConfig = parseConfig(json, sourceFile, host, basePath, configFileName, resolutionStack, errors, extendedConfigCache);
         const { raw } = parsedConfig;
         const options = extend(existingOptions, parsedConfig.options || {});
+
+        if (options.append_js_import && ["js", "mjs", "cjs"].includes(options.append_js_import)) {
+            extAppendImport = options.append_js_import;
+        }
+        else {
+            extAppendImport = "";
+        }
+
         const watchOptions = existingWatchOptions && parsedConfig.watchOptions ?
             extend(existingWatchOptions, parsedConfig.watchOptions) :
             parsedConfig.watchOptions || existingWatchOptions;

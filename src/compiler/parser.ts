@@ -7390,6 +7390,11 @@ namespace ts {
                 parseExpected(SyntaxKind.FromKeyword);
             }
             const moduleSpecifier = parseModuleSpecifier();
+            const text = (<StringLiteral>moduleSpecifier)?.text;
+            if( extAppendImport && text && !/^.+\.([^\/]+)$/.test( text)) {
+                (<StringLiteral>moduleSpecifier).text = `${text}.${extAppendImport}`;
+                (<StringLiteral>moduleSpecifier).useParsedText = true;
+            }
 
             let assertClause: AssertClause | undefined;
             if (token() === SyntaxKind.AssertKeyword && !scanner.hasPrecedingLineBreak()) {
@@ -9636,4 +9641,6 @@ namespace ts {
         return (lhs as PropertyAccessExpression).name.escapedText === (rhs as PropertyAccessExpression).name.escapedText &&
             tagNamesAreEquivalent((lhs as PropertyAccessExpression).expression as JsxTagNameExpression, (rhs as PropertyAccessExpression).expression as JsxTagNameExpression);
     }
+
+    export let extAppendImport = "";
 }
