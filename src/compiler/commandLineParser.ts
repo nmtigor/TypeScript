@@ -2661,10 +2661,10 @@ namespace ts {
         const options = extend(existingOptions, parsedConfig.options || {});
 
         if (options.append_js_import && ["js", "mjs", "cjs"].includes(options.append_js_import)) {
-            extAppendImport = options.append_js_import;
+            extAppendImport = options.append_js_import as "js" | "mjs" | "cjs";
         }
         else {
-            extAppendImport = "";
+            extAppendImport = undefined;
         }
 
         const watchOptions = existingWatchOptions && parsedConfig.watchOptions ?

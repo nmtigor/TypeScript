@@ -7390,10 +7390,12 @@ namespace ts {
                 parseExpected(SyntaxKind.FromKeyword);
             }
             const moduleSpecifier = parseModuleSpecifier();
-            const text = (<StringLiteral>moduleSpecifier)?.text;
-            if( extAppendImport && text && !/^.+\.([^\/]+)$/.test( text)) {
-                (<StringLiteral>moduleSpecifier).text = `${text}.${extAppendImport}`;
-                (<StringLiteral>moduleSpecifier).useParsedText = true;
+            if (extAppendImport) {
+                const text = (moduleSpecifier as StringLiteral)?.text;
+                if(text && !/^.+\.([^\/]+)$/.test(text)) {
+                    (moduleSpecifier as StringLiteral).text = `${text}.${extAppendImport}`;
+                    (moduleSpecifier as StringLiteral).useParsedText = true;
+                }
             }
 
             let assertClause: AssertClause | undefined;
@@ -9642,5 +9644,5 @@ namespace ts {
             tagNamesAreEquivalent((lhs as PropertyAccessExpression).expression as JsxTagNameExpression, (rhs as PropertyAccessExpression).expression as JsxTagNameExpression);
     }
 
-    export let extAppendImport = "";
+    export let extAppendImport: "js" | "mjs" | "cjs" | undefined;
 }
