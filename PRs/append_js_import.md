@@ -11,7 +11,8 @@ In some folder `ts_proj/`, adding to `tsconfig.json`
 ```jsonc
 {
   "compilerOptions": {
-    "append_js_import": "js", # Valid strings are "js", "cjs", "mjs"
+    // Valid strings are "js", "cjs", "mjs", "ts", "cts", "mts".
+    "append_js_import": "js",
   },
 }
 ```

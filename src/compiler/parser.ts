@@ -9644,5 +9644,5 @@ namespace ts {
             tagNamesAreEquivalent((lhs as PropertyAccessExpression).expression as JsxTagNameExpression, (rhs as PropertyAccessExpression).expression as JsxTagNameExpression);
     }
 
-    export let extAppendImport: "js" | "mjs" | "cjs" | undefined;
+    export let extAppendImport: "js" | "mjs" | "cjs" | "ts" | "mts" | "cts" | undefined;
 }

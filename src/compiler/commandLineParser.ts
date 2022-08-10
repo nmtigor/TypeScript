@@ -2660,8 +2660,8 @@ namespace ts {
         const { raw } = parsedConfig;
         const options = extend(existingOptions, parsedConfig.options || {});
 
-        if (options.append_js_import && ["js", "mjs", "cjs"].includes(options.append_js_import)) {
-            extAppendImport = options.append_js_import as "js" | "mjs" | "cjs";
+        if (options.append_js_import && ["js", "mjs", "cjs", "ts", "mts", "cts"].includes(options.append_js_import)) {
+            extAppendImport = options.append_js_import as "js" | "mjs" | "cjs" | "ts" | "mts" | "cts";
         }
         else {
             extAppendImport = undefined;
