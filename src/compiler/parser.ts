@@ -7393,8 +7393,8 @@ namespace ts {
             if (extAppendImport) {
                 const text = (moduleSpecifier as StringLiteral)?.text;
                 if(text && !/^.+\.([^\/]+)$/.test(text)) {
+                    (moduleSpecifier as StringLiteral).originalText = text;
                     (moduleSpecifier as StringLiteral).text = `${text}.${extAppendImport}`;
-                    (moduleSpecifier as StringLiteral).useParsedText = true;
                 }
             }
 

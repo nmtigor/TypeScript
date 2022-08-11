@@ -2153,7 +2153,7 @@ namespace ts {
     // For a NumericLiteral, the stored value is the toString() representation of the number. For example 1, 1.00, and 1e0 are all stored as just "1".
     export interface LiteralLikeNode extends Node {
         text: string;
-        useParsedText?: boolean;
+        originalText?: string;
         isUnterminated?: boolean;
         hasExtendedUnicodeEscape?: boolean;
     }

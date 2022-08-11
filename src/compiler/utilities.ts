@@ -657,9 +657,10 @@ namespace ts {
     }
 
     export function getLiteralText(node: LiteralLikeNode, sourceFile: SourceFile | undefined, flags: GetLiteralTextFlags) {
+        const useParsedText = () => !!node.originalText;
         // If we don't need to downlevel and we can reach the original source text using
         // the node's parent reference, then simply get the text as it was originally written.
-        if (!node.useParsedText && sourceFile && canUseOriginalText(node, flags)) {
+        if (!useParsedText() && sourceFile && canUseOriginalText(node, flags)) {
             return getSourceTextOfNodeFromSourceFile(sourceFile, node);
         }
 

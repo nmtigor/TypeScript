@@ -1168,6 +1168,7 @@ declare namespace ts {
     }
     export interface LiteralLikeNode extends Node {
         text: string;
+        originalText?: string;
         isUnterminated?: boolean;
         hasExtendedUnicodeEscape?: boolean;
     }
@@ -2967,6 +2968,7 @@ declare namespace ts {
         emitDecoratorMetadata?: boolean;
         exactOptionalPropertyTypes?: boolean;
         experimentalDecorators?: boolean;
+        append_js_import?: string;
         forceConsistentCasingInFileNames?: boolean;
         importHelpers?: boolean;
         importsNotUsedAsValues?: ImportsNotUsedAsValues;
@@ -4839,6 +4841,7 @@ declare namespace ts {
     export function parseJsonText(fileName: string, sourceText: string): JsonSourceFile;
     export function isExternalModule(file: SourceFile): boolean;
     export function updateSourceFile(sourceFile: SourceFile, newText: string, textChangeRange: TextChangeRange, aggressiveChecks?: boolean): SourceFile;
+    export let extAppendImport: "js" | "mjs" | "cjs" | "ts" | "mts" | "cts" | undefined;
     export {};
 }
 declare namespace ts {
