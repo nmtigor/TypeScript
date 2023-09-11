@@ -110,6 +110,7 @@ import {
     getLeadingCommentRanges,
     getSpellingSuggestion,
     getTextOfNodeFromSourceText,
+    hackTsModuleSpecifier,
     HasJSDoc,
     hasJSDocNodes,
     HasModifiers,
@@ -159,6 +160,7 @@ import {
     isNonNullExpression,
     isPrivateIdentifier,
     isSetAccessorDeclaration,
+    isStringLiteralLike,
     isStringOrNumericLiteralLike,
     isTaggedTemplateExpression,
     isTemplateLiteralKind,
@@ -8341,6 +8343,9 @@ namespace Parser {
             parseExpected(SyntaxKind.FromKeyword);
         }
         const moduleSpecifier = parseModuleSpecifier();
+        if (isStringLiteralLike(moduleSpecifier)) {
+            hackTsModuleSpecifier(moduleSpecifier);
+        }
 
         let assertClause: AssertClause | undefined;
         if (token() === SyntaxKind.AssertKeyword && !scanner.hasPrecedingLineBreak()) {

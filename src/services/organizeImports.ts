@@ -299,7 +299,7 @@ function hasModuleDeclarationMatchingSpecifier(sourceFile: SourceFile, moduleSpe
 
 function getExternalModuleName(specifier: Expression | undefined) {
     return specifier !== undefined && isStringLiteralLike(specifier)
-        ? specifier.text
+        ? (specifier.text = specifier.originalTsText ?? specifier.text)
         : undefined;
 }
 

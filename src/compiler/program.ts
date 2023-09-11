@@ -154,6 +154,7 @@ import {
     getTsConfigObjectLiteralExpression,
     getTsConfigPropArrayElementValue,
     getTypesPackageName,
+    hackTsModuleSpecifier,
     HasChangedAutomaticTypeDirectiveNames,
     hasChangesInResolutions,
     hasExtension,
@@ -3399,10 +3400,12 @@ export function createProgram(rootNamesOrOptions: readonly string[] | CreateProg
                 else if (isImportCall(node) && node.arguments.length >= 1 && isStringLiteralLike(node.arguments[0])) {
                     setParentRecursive(node, /*incremental*/ false); // we need parent data on imports before the program is fully bound, so we ensure it's set here
                     imports = append(imports, node.arguments[0]);
+                    hackTsModuleSpecifier(node.arguments[0]);
                 }
                 else if (isLiteralImportTypeNode(node)) {
                     setParentRecursive(node, /*incremental*/ false); // we need parent data on imports before the program is fully bound, so we ensure it's set here
                     imports = append(imports, node.argument.literal);
+                    hackTsModuleSpecifier(node.argument.literal);
                 }
             }
         }

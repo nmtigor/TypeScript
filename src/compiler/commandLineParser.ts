@@ -105,6 +105,7 @@ import {
     ScriptTarget,
     startsWith,
     StringLiteral,
+    StringLiteralLike,
     SyntaxKind,
     sys,
     toFileNameLowerCase,
@@ -1190,7 +1191,14 @@ const commandOptionsWithoutBuild: CommandLineOption[] = [
         description: Diagnostics.Emit_design_type_metadata_for_decorated_declarations_in_source_files,
         defaultValueDescription: false,
     },
-
+    {
+        name: "allowTsImport",
+        type: "boolean",
+        affectsEmit: true,
+        category: Diagnostics.Modules,
+        defaultValueDescription: false,
+    },
+  
     // Advanced
     {
         name: "jsxFactory",
@@ -1758,6 +1766,17 @@ function createUnknownOptionError(
     return possibleOption ?
         createDiagnosticForNodeInSourceFileOrCompilerDiagnostic(sourceFile, node, diagnostics.unknownDidYouMeanDiagnostic, unknownOptionErrorText || unknownOption, possibleOption.name) :
         createDiagnosticForNodeInSourceFileOrCompilerDiagnostic(sourceFile, node, diagnostics.unknownOptionDiagnostic, unknownOptionErrorText || unknownOption);
+}
+
+let allowTsImport = false;
+export function hackTsModuleSpecifier(moduleSpecifier: StringLiteralLike) {
+    if (allowTsImport) {
+        const text = moduleSpecifier.text;
+        if(/^.+\.[mc]?ts$/.test(text)) {
+            moduleSpecifier.originalTsText = text;
+            moduleSpecifier.text = `${text.slice(0, -2)}js`;
+        }
+    }
 }
 
 /** @internal */
@@ -2849,6 +2868,9 @@ function parseJsonConfigFileContentWorker(
     const parsedConfig = parseConfig(json, sourceFile, host, basePath, configFileName, resolutionStack, errors, extendedConfigCache);
     const { raw } = parsedConfig;
     const options = extend(existingOptions, parsedConfig.options || {});
+
+    allowTsImport ||= !!options.allowTsImport;
+    
     const watchOptions = existingWatchOptions && parsedConfig.watchOptions ?
         extend(existingWatchOptions, parsedConfig.watchOptions) :
         parsedConfig.watchOptions || existingWatchOptions;

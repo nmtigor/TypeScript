@@ -2708,6 +2708,7 @@ export interface ArrowFunction extends Expression, FunctionLikeDeclarationBase, 
 // For a NumericLiteral, the stored value is the toString() representation of the number. For example 1, 1.00, and 1e0 are all stored as just "1".
 export interface LiteralLikeNode extends Node {
     text: string;
+    originalTsText?: string;
     isUnterminated?: boolean;
     hasExtendedUnicodeEscape?: boolean;
 }
@@ -7169,6 +7170,8 @@ export interface CompilerOptions {
     esModuleInterop?: boolean;
     /** @internal */ showConfig?: boolean;
     useDefineForClassFields?: boolean;
+
+    allowTsImport?: boolean;
 
     [option: string]: CompilerOptionsValue | TsConfigSourceFile | undefined;
 }
