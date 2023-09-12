@@ -9,6 +9,7 @@ import {
     cast,
     changeExtension,
     CharacterCodes,
+    clearPreprocessorName,
     combinePaths,
     CommandLineOption,
     CommandLineOptionOfCustomType,
@@ -1190,6 +1191,12 @@ const commandOptionsWithoutBuild: CommandLineOption[] = [
         description: Diagnostics.Emit_design_type_metadata_for_decorated_declarations_in_source_files,
         defaultValueDescription: false,
     },
+    {
+        name: "preprocessorFile",
+        type: "string",
+        affectsEmit: true,
+        category: Diagnostics.File_Management,
+    },
 
     // Advanced
     {
@@ -1759,6 +1766,8 @@ function createUnknownOptionError(
         createDiagnosticForNodeInSourceFileOrCompilerDiagnostic(sourceFile, node, diagnostics.unknownDidYouMeanDiagnostic, unknownOptionErrorText || unknownOption, possibleOption.name) :
         createDiagnosticForNodeInSourceFileOrCompilerDiagnostic(sourceFile, node, diagnostics.unknownOptionDiagnostic, unknownOptionErrorText || unknownOption);
 }
+
+export let staticIfEnabled = false;
 
 /** @internal */
 export function parseCommandLineWorker(
@@ -2859,6 +2868,14 @@ function parseJsonConfigFileContentWorker(
     setConfigFileInOptions(options, sourceFile);
 
     const basePathForFileNames = normalizePath(configFileName ? directoryOfCombinedPath(configFileName, basePath) : basePath);
+
+    staticIfEnabled = false;
+    clearPreprocessorName();
+    if (options.preprocessorFile) {
+        staticIfEnabled = true;
+        options.preprocessorFile = getNormalizedAbsolutePath(options.preprocessorFile, basePathForFileNames);
+    }
+
     return {
         options,
         watchOptions,

@@ -919,7 +919,8 @@ export interface Node extends ReadonlyTextRange {
     //       `locals` and `nextContainer` have been moved to `LocalsContainer`
     //       `flowNode` has been moved to `FlowContainer`
     //       see: https://github.com/microsoft/TypeScript/pull/51682
-}
+    /** @internal */ isToplevel?: boolean | undefined;
+    }
 
 export interface JSDocContainer extends Node {
     _jsdocContainerBrand: any;
@@ -7169,6 +7170,8 @@ export interface CompilerOptions {
     esModuleInterop?: boolean;
     /** @internal */ showConfig?: boolean;
     useDefineForClassFields?: boolean;
+    
+    preprocessorFile?: string;
 
     [option: string]: CompilerOptionsValue | TsConfigSourceFile | undefined;
 }
@@ -9459,6 +9462,7 @@ export interface PrinterOptions {
     /** @internal */ preserveSourceNewlines?: boolean;
     /** @internal */ terminateUnterminatedLiterals?: boolean;
     /** @internal */ relativeToBuildInfo?: (path: string) => string;
+    /** @internal */ preprocessorFile?: string;
 }
 
 /** @internal */
