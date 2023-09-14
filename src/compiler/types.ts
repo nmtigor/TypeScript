@@ -7172,6 +7172,7 @@ export interface CompilerOptions {
     useDefineForClassFields?: boolean;
     
     preprocessorFile?: string;
+    preprocessorNames?: string[];
 
     [option: string]: CompilerOptionsValue | TsConfigSourceFile | undefined;
 }

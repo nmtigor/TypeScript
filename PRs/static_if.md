@@ -15,7 +15,7 @@ In some folder <ins>ts_proj/</ins>, adding to tsconfig.json
 ```
 then invoking
 ```sh
-node /path_to/TypeScript/built/local/tsc.js -p /path_to/ts_proj
+node /path_to/TypeScript/built/local/tsc.js -p /path_to/ts_proj --preprocessorNames ~ABC,XYZ,~abc
 ```
 then following TS codes of static_if.ts
 ```ts
@@ -44,6 +44,11 @@ if (FFF) {}
 // `ConditionalExpression` is also supported.
 abc = /*#static*/ TTT ? /*#static*/ !FFF ? FFF && TTT : false : !abc;
 /*#static*/ if (/*#static*/ FFF || TTT ? FFF : TTT) {}
+
+const ABC = true;
+const XYZ = ABC && TTT;
+/*#static*/if (ABC) 7;
+/*#static*/if (XYZ) 8;
 ```
 emit
 ```js
@@ -67,12 +72,19 @@ if (FFF) { }
 // `ConditionalExpression` is also supported.
 abc = /*#static*/ FFF && TTT;
 /*#static*/ if ( /*#static*/FFF) { }
+const ABC = false;
+const XYZ = true;
+/*#static*/ 
+/*#static*/ 
+    8;
 ```
 `FFF`, `TTT` are **preprocessor names**. They are given in `"preprocessorFile"` by top level const `VariableDeclaration`s with initializer being either `true`, `false`, or logical expressions with preprocessor names.
 
 Then `IfStatement`s and `ConditionalExpression`s can emit one branch codes if they have
 * trimed string "#static" as last preceding comment;
 * the condition expression satisfy the [Grammar](#Grammar) with preprocessor names.
+
+Optionally, preprocessor name values can be overridden by the option `preprocessorName` through command line. As above, `--preprocessorNames ~ABC,XYZ,~abc` means, `ABC` is reset to false, `XYZ` is reset to true, and `!abc` is ignored because `abc` is not a valid preprocessor name.
 
 One important feature of this approach is, even without enabling this feature (not provide `"preprocessorFile"`, or run by deno), all codes are still valid.
 

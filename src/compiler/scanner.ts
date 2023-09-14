@@ -2898,13 +2898,8 @@ export function getOnceLastCommentIsStatic() {
     return ret;
 }
 
-const preprocessorNames = new Set<string>();
-export function addPreprocessorName(name: string) {
-    preprocessorNames.add(name);
-}
-export function clearPreprocessorName() {
-    preprocessorNames.clear();
-}
+export const preprocessorNames = new Set<string>();
+export const commandLinePreprocessorNames = new Set<string>();
 
 function isNameStart(ch: number) {
     return ch >= CharacterCodes.A && ch <= CharacterCodes.Z
@@ -2968,8 +2963,14 @@ function scanTerm(params: ScanTermParams, precedence = Precedence.lowest) {
             while (++pos < pos1 && isNamePart(text.charCodeAt(pos)));
             const posName1 = pos;
             const name = text.slice(posName0, posName1);
-            if (preprocessorNames.has(name)) ret = true;
-            else if (preprocessorNames.has("!" + name)) ret = false;
+            if (preprocessorNames.has(name)) {
+                if (commandLinePreprocessorNames.has("~" + name)) ret = false;
+                else ret = true;
+            }
+            else if (preprocessorNames.has("!" + name)) {
+                if (commandLinePreprocessorNames.has(name)) ret = true;
+                else ret = false;
+            }
             else {
                 ret = undefined;
                 break;

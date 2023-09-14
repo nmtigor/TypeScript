@@ -1,7 +1,6 @@
 import * as ts from "./_namespaces/ts";
 import {
     AccessorDeclaration,
-    addPreprocessorName,
     ArrayBindingPattern,
     ArrayLiteralExpression,
     arrayToMap,
@@ -43,6 +42,7 @@ import {
     clone,
     combinePaths,
     CommaListExpression,
+    commandLinePreprocessorNames,
     CommentRange,
     compareEmitHelpers,
     comparePaths,
@@ -360,6 +360,7 @@ import {
     positionsAreOnSameLine,
     PostfixUnaryExpression,
     PrefixUnaryExpression,
+    preprocessorNames,
     Printer,
     PrinterOptions,
     PrintHandlers,
@@ -1720,6 +1721,7 @@ export function createPrinter(printerOptions: PrinterOptions = {}, handlers: Pri
         reservedPrivateNamesStack = [];
         reservedPrivateNames = undefined;
         currentSourceFile = undefined;
+        inPreprocessorFile = undefined;
         currentLineMap = undefined;
         detachedCommentsInfo = undefined;
         setWriter(/*output*/ undefined, /*_sourceMapGenerator*/ undefined);
@@ -3726,10 +3728,6 @@ export function createPrinter(printerOptions: PrinterOptions = {}, handlers: Pri
     //
 
     function emitVariableDeclaration(node: VariableDeclaration) {
-        emit(node.name);
-        emit(node.exclamationToken);
-        emitTypeAnnotation(node.type);
-        emitInitializer(node.initializer, node.type?.end ?? node.name.emitNode?.typeNode?.end ?? node.name.end, node, parenthesizer.parenthesizeExpressionForDisallowedComma);
         if (staticIfEnabled
             && currentSourceFile
             && inPreprocessorFile
@@ -3755,9 +3753,21 @@ export function createPrinter(printerOptions: PrinterOptions = {}, handlers: Pri
                 }
             }
             if (preprocessorName) {
-                addPreprocessorName(preprocessorName);
+                preprocessorNames.add(preprocessorName);
+                if (preprocessorName.startsWith("!") 
+                    && commandLinePreprocessorNames.has(preprocessorName.slice(1))){
+                    (node.initializer as any).kind = SyntaxKind.TrueKeyword
+                }
+                else if (!preprocessorName.startsWith("!") 
+                    && commandLinePreprocessorNames.has("~" + preprocessorName)) {
+                    (node.initializer as any).kind = SyntaxKind.FalseKeyword
+                }
             }
         }
+        emit(node.name);
+        emit(node.exclamationToken);
+        emitTypeAnnotation(node.type);
+        emitInitializer(node.initializer, node.type?.end ?? node.name.emitNode?.typeNode?.end ?? node.name.end, node, parenthesizer.parenthesizeExpressionForDisallowedComma);
     }
 
     function emitVariableDeclarationList(node: VariableDeclarationList) {

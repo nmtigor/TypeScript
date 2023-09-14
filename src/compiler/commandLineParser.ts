@@ -9,11 +9,11 @@ import {
     cast,
     changeExtension,
     CharacterCodes,
-    clearPreprocessorName,
     combinePaths,
     CommandLineOption,
     CommandLineOptionOfCustomType,
     CommandLineOptionOfListType,
+    commandLinePreprocessorNames,
     CompilerOptions,
     CompilerOptionsValue,
     ConfigFileSpecs,
@@ -98,6 +98,7 @@ import {
     Path,
     PollingWatchKind,
     PrefixUnaryExpression,
+    preprocessorNames,
     ProjectReference,
     PropertyAssignment,
     PropertyName,
@@ -504,6 +505,16 @@ export const commonOptionsWithBuild: CommandLineOption[] = [
         isCommandLineOnly: true,
         description: Diagnostics.Set_the_language_of_the_messaging_from_TypeScript_This_does_not_affect_emit,
         defaultValueDescription: Diagnostics.Platform_specific,
+    },
+    {
+        name: "preprocessorNames",
+        type: "list",
+        element: {
+            name: "preprocessorName",
+            type: "string",
+        },
+        affectsSourceFile: true,
+        affectsEmit: true,
     },
 ];
 
@@ -1194,8 +1205,8 @@ const commandOptionsWithoutBuild: CommandLineOption[] = [
     {
         name: "preprocessorFile",
         type: "string",
+        affectsSourceFile: true,
         affectsEmit: true,
-        category: Diagnostics.File_Management,
     },
 
     // Advanced
@@ -2870,10 +2881,11 @@ function parseJsonConfigFileContentWorker(
     const basePathForFileNames = normalizePath(configFileName ? directoryOfCombinedPath(configFileName, basePath) : basePath);
 
     staticIfEnabled = false;
-    clearPreprocessorName();
+    preprocessorNames.clear();
     if (options.preprocessorFile) {
         staticIfEnabled = true;
         options.preprocessorFile = getNormalizedAbsolutePath(options.preprocessorFile, basePathForFileNames);
+        options.preprocessorNames?.forEach(name => commandLinePreprocessorNames.add(name));
     }
 
     return {
