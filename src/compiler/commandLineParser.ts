@@ -56,6 +56,7 @@ import {
     getRegularExpressionForWildcard,
     getRegularExpressionsForWildcards,
     getRelativePathFromFile,
+    getResolvedModule,
     getSpellingSuggestion,
     getSupportedExtensions,
     getSupportedExtensionsWithJsonIfResolveJsonModule,
@@ -68,6 +69,7 @@ import {
     isArrayLiteralExpression,
     isComputedNonLiteralName,
     isImplicitGlob,
+    isNoSubstitutionTemplateLiteral,
     isObjectLiteralExpression,
     isRootedDiskPath,
     isString,
@@ -103,8 +105,10 @@ import {
     removeTrailingDirectorySeparator,
     returnTrue,
     ScriptTarget,
+    SourceFile,
     startsWith,
     StringLiteral,
+    StringLiteralLike,
     SyntaxKind,
     sys,
     toFileNameLowerCase,
@@ -1190,6 +1194,12 @@ const commandOptionsWithoutBuild: CommandLineOption[] = [
         description: Diagnostics.Emit_design_type_metadata_for_decorated_declarations_in_source_files,
         defaultValueDescription: false,
     },
+    {
+        name: "unaliasImportPaths",
+        type: "boolean",
+        affectsEmit: true,
+        defaultValueDescription: false,
+    },
 
     // Advanced
     {
@@ -1758,6 +1768,24 @@ function createUnknownOptionError(
     return possibleOption ?
         createDiagnosticForNodeInSourceFileOrCompilerDiagnostic(sourceFile, node, diagnostics.unknownDidYouMeanDiagnostic, unknownOptionErrorText || unknownOption, possibleOption.name) :
         createDiagnosticForNodeInSourceFileOrCompilerDiagnostic(sourceFile, node, diagnostics.unknownOptionDiagnostic, unknownOptionErrorText || unknownOption);
+}
+
+let unaliasImportPaths = false;
+export const resolvedToOutputMap = new Map<string, string>();
+export function hackAliasedModuleSpecifier(moduleSpecifier: StringLiteralLike, sourceFile?: SourceFile) {
+    if (unaliasImportPaths && !moduleSpecifier.originalAliasedText && sourceFile?.jsFilePath) {
+        const mode = undefined;
+        const resolvedModule = getResolvedModule(sourceFile, moduleSpecifier.text, mode);
+        const jsFilePath = resolvedModule && resolvedToOutputMap.get(resolvedModule.resolvedFileName);
+        if (jsFilePath) {
+            moduleSpecifier.originalAliasedText = moduleSpecifier.text;
+            const useCaseSensitiveFileNames = true;
+            moduleSpecifier.text = getRelativePathFromFile(sourceFile.jsFilePath, jsFilePath, createGetCanonicalFileName(useCaseSensitiveFileNames));
+            if (isNoSubstitutionTemplateLiteral(moduleSpecifier)) {
+                moduleSpecifier.rawText = moduleSpecifier.text;
+            }
+        }
+    }
 }
 
 /** @internal */
@@ -2849,6 +2877,9 @@ function parseJsonConfigFileContentWorker(
     const parsedConfig = parseConfig(json, sourceFile, host, basePath, configFileName, resolutionStack, errors, extendedConfigCache);
     const { raw } = parsedConfig;
     const options = extend(existingOptions, parsedConfig.options || {});
+
+    unaliasImportPaths ||= !!options.unaliasImportPaths;
+    
     const watchOptions = existingWatchOptions && parsedConfig.watchOptions ?
         extend(existingWatchOptions, parsedConfig.watchOptions) :
         parsedConfig.watchOptions || existingWatchOptions;

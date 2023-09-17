@@ -185,6 +185,7 @@ import {
     getTransformers,
     getTypeNode,
     guessIndentation,
+    hackAliasedModuleSpecifier,
     HasLocals,
     hasRecordedExternalHelpers,
     HeritageClause,
@@ -248,6 +249,7 @@ import {
     isSourceFile,
     isSourceFileNotJson,
     isStringLiteral,
+    isStringLiteralLike,
     isTemplateLiteralKind,
     isTokenKind,
     isTypeParameterDeclaration,
@@ -376,6 +378,7 @@ import {
     rangeStartPositionsAreOnSameLine,
     readJsonOrUndefined,
     removeFileExtension,
+    resolvedToOutputMap,
     resolvePath,
     RestTypeNode,
     returnFalse,
@@ -562,6 +565,10 @@ export function getOutputPathsFor(sourceFile: SourceFile | Bundle, host: EmitHos
         const isJsonEmittedToSameLocation = isJsonFile &&
             comparePaths(sourceFile.fileName, ownOutputFilePath, host.getCurrentDirectory(), !host.useCaseSensitiveFileNames()) === Comparison.EqualTo;
         const jsFilePath = options.emitDeclarationOnly || isJsonEmittedToSameLocation ? undefined : ownOutputFilePath;
+        if (jsFilePath) {
+            sourceFile.jsFilePath = jsFilePath;
+            resolvedToOutputMap.set(sourceFile.path, jsFilePath);
+        }
         const sourceMapFilePath = !jsFilePath || isJsonSourceFile(sourceFile) ? undefined : getSourceMapFilePath(jsFilePath, options);
         const declarationFilePath = (forceDtsPaths || (getEmitDeclarations(options) && !isJsonFile)) ? getDeclarationEmitOutputFilePath(sourceFile.fileName, host) : undefined;
         const declarationMapPath = declarationFilePath && getAreDeclarationMapsEnabled(options) ? declarationFilePath + ".map" : undefined;
@@ -3099,6 +3106,11 @@ export function createPrinter(printerOptions: PrinterOptions = {}, handlers: Pri
         }
         emit(node.questionDotToken);
         emitTypeArguments(node, node.typeArguments);
+        if (node.expression.kind === SyntaxKind.ImportKeyword
+            && node.arguments.length === 1
+            && isStringLiteralLike(node.arguments[0])) {
+            hackAliasedModuleSpecifier(node.arguments[0], currentSourceFile);
+        }
         emitExpressionList(node, node.arguments, ListFormat.CallExpressionArguments, parenthesizer.parenthesizeExpressionForDisallowedComma);
     }
 
@@ -3988,6 +4000,9 @@ export function createPrinter(printerOptions: PrinterOptions = {}, handlers: Pri
             writeSpace();
             emitTokenWithComment(SyntaxKind.FromKeyword, node.importClause.end, writeKeyword, node);
             writeSpace();
+        }
+        if (isStringLiteral(node.moduleSpecifier)) {
+            hackAliasedModuleSpecifier(node.moduleSpecifier, currentSourceFile);
         }
         emitExpression(node.moduleSpecifier);
         if (node.assertClause) {
