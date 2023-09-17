@@ -24,14 +24,14 @@ then following TS codes
 ```ts
 import { Blah } from "hello.ts";
 Blah.toUpperCase();
-export const { blah_1 } = await import("hello_1.ts");
+export const { blah_1 } = await import(`hello_1.ts`);
 const blah_2 = "Blah" as import("./hello.ts").Blah;
 ```
 emit
 ```js
 import { Blah } from "hello.js";
 Blah.toUpperCase();
-export const { blah_1 } = await import("hello_1.js");
+export const { blah_1 } = await import(`hello_1.js`);
 const blah_2 = "Blah";
 ```
 

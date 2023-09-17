@@ -68,6 +68,7 @@ import {
     isArrayLiteralExpression,
     isComputedNonLiteralName,
     isImplicitGlob,
+    isNoSubstitutionTemplateLiteral,
     isObjectLiteralExpression,
     isRootedDiskPath,
     isString,
@@ -1775,6 +1776,9 @@ export function hackTsModuleSpecifier(moduleSpecifier: StringLiteralLike) {
         if(/^.+\.[mc]?ts$/.test(text)) {
             moduleSpecifier.originalTsText = text;
             moduleSpecifier.text = `${text.slice(0, -2)}js`;
+            if (isNoSubstitutionTemplateLiteral(moduleSpecifier)) {
+                moduleSpecifier.rawText = moduleSpecifier.text;
+            }
         }
     }
 }
