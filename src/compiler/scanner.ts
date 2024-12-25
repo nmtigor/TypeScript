@@ -31,6 +31,7 @@ import {
     ScriptKind,
     ScriptTarget,
     SourceFileLike,
+    staticIfEnabled,
     SyntaxKind,
     TextRange,
     TokenFlags,
@@ -871,23 +872,88 @@ function iterateCommentRanges<T, U>(reduce: boolean, text: string, pos: number, 
                     const kind = nextChar === CharacterCodes.slash ? SyntaxKind.SingleLineCommentTrivia : SyntaxKind.MultiLineCommentTrivia;
                     const startPos = pos;
                     pos += 2;
+                    let nonWhiteSpaceStart = -1;
+                    let nonWhiteSpaceEnd = -1;
                     if (nextChar === CharacterCodes.slash) {
-                        while (pos < text.length) {
-                            if (isLineBreak(text.charCodeAt(pos))) {
-                                hasTrailingNewLine = true;
-                                break;
+                        if (staticIfEnabled) {
+                            while (pos < text.length) {
+                                const ch = text.charCodeAt(pos);
+                                if (nonWhiteSpaceStart < 0) {
+                                    if (!isWhiteSpaceSingleLine(ch)
+                                        && !isLineBreak(ch)
+                                    ) {
+                                        nonWhiteSpaceStart = pos;
+                                        nonWhiteSpaceEnd = pos + 1;
+                                    }
+                                }
+                                else {
+                                    if (!isWhiteSpaceSingleLine(ch)
+                                        && !isLineBreak(ch)
+                                    ) {
+                                        nonWhiteSpaceEnd = pos + 1;
+                                    }
+                                }
+                                if (isLineBreak(ch)) {
+                                    hasTrailingNewLine = true;
+                                    break;
+                                }
+                                pos++;
                             }
-                            pos++;
+                        }
+                        else {
+                            while (pos < text.length) {
+                                if (isLineBreak(text.charCodeAt(pos))) {
+                                    hasTrailingNewLine = true;
+                                    break;
+                                }
+                                pos++;
+                            }
                         }
                     }
                     else {
-                        while (pos < text.length) {
-                            if (text.charCodeAt(pos) === CharacterCodes.asterisk && text.charCodeAt(pos + 1) === CharacterCodes.slash) {
-                                pos += 2;
-                                break;
+                        if (staticIfEnabled) {
+                            while (pos < text.length) {
+                                const ch = text.charCodeAt(pos);
+                                if (nonWhiteSpaceStart < 0) {
+                                    if (!isWhiteSpaceSingleLine(ch)
+                                        && !(ch === CharacterCodes.asterisk && text.charCodeAt(pos + 1) === CharacterCodes.slash)
+                                    ) {
+                                        nonWhiteSpaceStart = pos;
+                                        nonWhiteSpaceEnd = pos + 1;
+                                    }
+                                }
+                                else {
+                                    if (!isWhiteSpaceSingleLine(ch)
+                                        && !(ch === CharacterCodes.asterisk && text.charCodeAt(pos + 1) === CharacterCodes.slash)
+                                    ) {
+                                        nonWhiteSpaceEnd = pos + 1;
+                                    }
+                                }
+                                if (ch === CharacterCodes.asterisk && text.charCodeAt(pos + 1) === CharacterCodes.slash) {
+                                    pos += 2;
+                                    break;
+                                }
+                                pos++;
                             }
-                            pos++;
                         }
+                        else {
+                            while (pos < text.length) {
+                                if (text.charCodeAt(pos) === CharacterCodes.asterisk && text.charCodeAt(pos + 1) === CharacterCodes.slash) {
+                                    pos += 2;
+                                    break;
+                                }
+                                pos++;
+                            }
+                        }
+                    }
+                    if (staticIfEnabled
+                        && nonWhiteSpaceEnd - nonWhiteSpaceStart === "#static".length
+                        && text.slice(nonWhiteSpaceStart, nonWhiteSpaceEnd) === "#static"
+                    ) {
+                        lastCommentIsStatic = true;
+                    }
+                    else {
+                        lastCommentIsStatic = false;
                     }
 
                     if (collecting) {
@@ -4098,3 +4164,202 @@ const valuesOfNonBinaryUnicodeProperties = {
 // The Script_Extensions property of a character contains one or more Script values. See https://www.unicode.org/reports/tr24/#Script_Extensions
 // Here since each Unicode property value expression only allows a single value, its values can be considered the same as those of the Script property.
 valuesOfNonBinaryUnicodeProperties.Script_Extensions = valuesOfNonBinaryUnicodeProperties.Script;
+
+let lastCommentIsStatic = false;
+export function getOnceLastCommentIsStatic(): boolean {
+    const ret = lastCommentIsStatic;
+    lastCommentIsStatic = false;
+    return ret;
+}
+
+export const preprocessorNames: Set<string> = new Set();
+export const commandLinePreprocessorNames: Set<string> = new Set();
+
+function isNameStart(ch: number) {
+    return ch >= CharacterCodes.A && ch <= CharacterCodes.Z
+        || ch >= CharacterCodes.a && ch <= CharacterCodes.z
+        || ch === CharacterCodes._;
+}
+function isNamePart(ch: number) {
+    return isNameStart(ch)
+        || ch >= CharacterCodes._0 && ch <= CharacterCodes._9;
+}
+
+let groupingDepth = 0;
+
+// Ref. https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence
+const enum Precedence {
+    // grouping = 21,
+    logicalNot = 17,
+    logicalAnd = 7,
+    logicalOr = 6,
+    lowest = 0,
+}
+
+interface ScanTermParams {
+    readonly text: string;
+    pos: number;
+    readonly pos1: number;
+}
+/**
+ * `!TERM`, `TERM`, `TERM && TERM`, `TERM || TERM`
+ */
+function scanTerm(params: ScanTermParams, precedence = Precedence.lowest) {
+    let ret: boolean | undefined;
+
+    const text = params.text;
+    let pos = params.pos;
+    const pos1 = params.pos1;
+    while (pos < pos1) {
+        const ch = text.charCodeAt(pos);
+        if (ch === CharacterCodes.exclamation) {
+            if (ret !== undefined) {
+                ret = undefined;
+                break;
+            }
+
+            params.pos = pos + 1;
+            const ret1 = scanTerm(params, Precedence.logicalNot);
+            if (ret1 === undefined) {
+                ret = undefined;
+                break;
+            }
+            ret = !ret1;
+            pos = params.pos;
+        }
+        else if (isNameStart(ch)) {
+            if (ret !== undefined) {
+                ret = undefined;
+                break;
+            }
+
+            const posName0 = pos;
+            while (++pos < pos1 && isNamePart(text.charCodeAt(pos)));
+            const posName1 = pos;
+            const name = text.slice(posName0, posName1);
+            if (preprocessorNames.has(name)) {
+                if (commandLinePreprocessorNames.has("~" + name)) ret = false;
+                else ret = true;
+            }
+            else if (preprocessorNames.has("!" + name)) {
+                if (commandLinePreprocessorNames.has(name)) ret = true;
+                else ret = false;
+            }
+            else {
+                ret = undefined;
+                break;
+            }
+        }
+        else if (ch === CharacterCodes.ampersand) {
+            if (pos+1 >= pos1 || text.charCodeAt(pos+1) !== CharacterCodes.ampersand) {
+                ret = undefined;
+                break;
+            }
+            if (ret === undefined) {
+                break;
+            }
+            if (precedence > Precedence.logicalAnd) {
+                break; // `!A && B`
+            }
+
+            params.pos = pos + 2;
+            const ret1 = scanTerm(params, Precedence.logicalAnd);
+            if (ret1 === undefined) {
+                ret = undefined;
+                break;
+            }
+            ret &&= ret1;
+            pos = params.pos;
+        }
+        else if (ch === CharacterCodes.bar) {
+            if (pos+1 >= pos1 || text.charCodeAt(pos+1) !== CharacterCodes.bar) {
+                ret = undefined;
+                break;
+            }
+            if (ret === undefined) {
+                break;
+            }
+            if (precedence > Precedence.logicalOr) {
+                break; // `!A || B`, `A && B || C`
+            }
+
+            params.pos = pos + 2;
+            const ret1 = scanTerm(params, Precedence.logicalOr);
+            if (ret1 === undefined) {
+                ret = undefined;
+                break;
+            }
+            ret ||= ret1;
+            pos = params.pos;
+        }
+        else if (ch === CharacterCodes.openParen) {
+            if (ret !== undefined) {
+                ret = undefined;
+                break;
+            }
+
+            groupingDepth++;
+            params.pos = pos + 1;
+            ret = scanTerm(params);
+            if (ret === undefined) {
+                break;
+            }
+
+            pos = params.pos;
+            if (pos < pos1 && isWhiteSpaceSingleLine(text.charCodeAt(pos))) {
+                while (++pos < pos1 && isWhiteSpaceSingleLine(text.charCodeAt(pos)));
+            }
+            if (pos < pos1 && text.charCodeAt(pos) === CharacterCodes.closeParen) {
+                if (groupingDepth > 0) {
+                    pos++;
+                    groupingDepth--;
+                }
+                else {
+                    ret = undefined;
+                }
+            }
+            else {
+                ret = undefined;
+            }
+            if (ret === undefined) {
+                break;
+            }
+        }
+        else if (isWhiteSpaceSingleLine(ch)) {
+            while (++pos < pos1 && isWhiteSpaceSingleLine(text.charCodeAt(pos)));
+        }
+        else if (ch === CharacterCodes.closeParen) { // `(A)`
+            if (groupingDepth === 0) ret = undefined;
+            break;
+        }
+        else {
+            ret = undefined;
+            break;
+        }
+    }
+    params.pos = pos;
+    return ret;
+}
+
+export const enum StaticIf {
+    Undefined,
+    True,
+    False,
+}
+export function staticIf(text: string, pos: number, pos1: number): StaticIf {
+    if (pos >= pos1) return StaticIf.Undefined;
+
+    if (isWhiteSpaceSingleLine(text.charCodeAt(pos))) {
+        while (++pos < pos1 && isWhiteSpaceSingleLine(text.charCodeAt(pos)));
+    }
+    if (pos >= pos1) return StaticIf.Undefined;
+
+    groupingDepth = 0;
+    let b = scanTerm({ text, pos, pos1 });
+    if (groupingDepth !== 0) b = undefined;
+    return b === true
+        ? StaticIf.True
+        : b === false
+            ? StaticIf.False
+            : StaticIf.Undefined;
+}

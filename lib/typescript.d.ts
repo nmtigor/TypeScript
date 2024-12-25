@@ -4985,6 +4985,9 @@ declare namespace ts {
     }
     interface LiteralLikeNode extends Node {
         text: string;
+        originalTsText?: string;
+        originalAliasedText?: string;
+        organizedImports?: boolean;
         isUnterminated?: boolean;
         hasExtendedUnicodeEscape?: boolean;
     }
@@ -5894,6 +5897,8 @@ declare namespace ts {
         readonly endOfFileToken: Token<SyntaxKind.EndOfFileToken>;
         fileName: string;
         text: string;
+        /** */
+        jsFilePath?: string;
         amdDependencies: readonly AmdDependency[];
         moduleName?: string;
         referencedFiles: readonly FileReference[];
@@ -7094,6 +7099,10 @@ declare namespace ts {
         verbatimModuleSyntax?: boolean;
         esModuleInterop?: boolean;
         useDefineForClassFields?: boolean;
+        allowTsImport?: boolean;
+        preprocessorFile?: string;
+        preprocessorNames?: string[];
+        unaliasImportPaths?: boolean;
         [option: string]: CompilerOptionsValue | TsConfigSourceFile | undefined;
     }
     interface WatchOptions {
@@ -8130,6 +8139,8 @@ declare namespace ts {
         newLine?: NewLineKind;
         omitTrailingSemicolon?: boolean;
         noEmitHelpers?: boolean;
+        /** @hacker */ preprocessorFile?: string;
+        /** @hacker */ hackAliasedModuleSpecifier?: (moduleSpecifier: StringLiteralLike, sourceFile?: SourceFile) => void;
     }
     interface GetEffectiveTypeRootsHost {
         getCurrentDirectory?(): string;
@@ -8462,6 +8473,8 @@ declare namespace ts {
     function isIdentifierStart(ch: number, languageVersion: ScriptTarget | undefined): boolean;
     function isIdentifierPart(ch: number, languageVersion: ScriptTarget | undefined, identifierVariant?: LanguageVariant): boolean;
     function createScanner(languageVersion: ScriptTarget, skipTrivia: boolean, languageVariant?: LanguageVariant, textInitial?: string, onError?: ErrorCallback, start?: number, length?: number): Scanner;
+    function getOnceLastCommentIsStatic(): boolean;
+    function staticIf(text: string, pos: number, pos1: number): StaticIf;
     type ErrorCallback = (message: DiagnosticMessage, length: number, arg0?: any) => void;
     interface Scanner {
         /** @deprecated use {@link getTokenFullStart} */
@@ -8512,6 +8525,13 @@ declare namespace ts {
         lookAhead<T>(callback: () => T): T;
         scanRange<T>(start: number, length: number, callback: () => T): T;
         tryScan<T>(callback: () => T): T;
+    }
+    const preprocessorNames: Set<string>;
+    const commandLinePreprocessorNames: Set<string>;
+    enum StaticIf {
+        Undefined = 0,
+        True = 1,
+        False = 2,
     }
     function isExternalModuleNameRelative(moduleName: string): boolean;
     function sortAndDeduplicateDiagnostics<T extends Diagnostic>(diagnostics: readonly T[]): SortedReadonlyArray<T>;
@@ -9168,6 +9188,7 @@ declare namespace ts {
         setExternalModuleIndicator?: (file: SourceFile) => void;
         jsDocParsingMode?: JSDocParsingMode;
     }
+    function hackTsModuleSpecifier(moduleSpecifier: StringLiteralLike): void;
     function parseCommandLine(commandLine: readonly string[], readFile?: (path: string) => string | undefined): ParsedCommandLine;
     function parseBuildCommand(commandLine: readonly string[]): ParsedBuildCommand;
     /**
@@ -9224,6 +9245,9 @@ declare namespace ts {
         options: TypeAcquisition;
         errors: Diagnostic[];
     };
+    let staticIfEnabled: boolean;
+    let unaliasImportPaths: boolean;
+    const resolvedToOutputMap: Map<string, string>;
     /** Parsed command line for build */
     interface ParsedBuildCommand {
         buildOptions: BuildOptions;

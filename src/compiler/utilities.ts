@@ -1904,7 +1904,7 @@ export const enum GetLiteralTextFlags {
 export function getLiteralText(node: LiteralLikeNode, sourceFile: SourceFile | undefined, flags: GetLiteralTextFlags): string {
     // If we don't need to downlevel and we can reach the original source text using
     // the node's parent reference, then simply get the text as it was originally written.
-    if (sourceFile && canUseOriginalText(node, flags)) {
+    if (!node.originalTsText && !node.originalAliasedText && sourceFile && canUseOriginalText(node, flags)) {
         return getSourceTextOfNodeFromSourceFile(sourceFile, node);
     }
 
@@ -1915,11 +1915,14 @@ export function getLiteralText(node: LiteralLikeNode, sourceFile: SourceFile | u
             const escapeText = flags & GetLiteralTextFlags.JsxAttributeEscape ? escapeJsxAttributeString :
                 flags & GetLiteralTextFlags.NeverAsciiEscape || (getEmitFlags(node) & EmitFlags.NoAsciiEscaping) ? escapeString :
                 escapeNonAsciiString;
+            const text = node.organizedImports
+                ? (node.originalTsText ?? node.originalAliasedText ?? node.text)
+                : node.text;
             if ((node as StringLiteral).singleQuote) {
-                return "'" + escapeText(node.text, CharacterCodes.singleQuote) + "'";
+                return "'" + escapeText(text, CharacterCodes.singleQuote) + "'";
             }
             else {
-                return '"' + escapeText(node.text, CharacterCodes.doubleQuote) + '"';
+                return '"' + escapeText(text, CharacterCodes.doubleQuote) + '"';
             }
         }
         case SyntaxKind.NoSubstitutionTemplateLiteral:

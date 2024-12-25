@@ -14,6 +14,7 @@ import {
     CommandLineOption,
     CommandLineOptionOfCustomType,
     CommandLineOptionOfListType,
+    commandLinePreprocessorNames,
     CompilerOptions,
     CompilerOptionsValue,
     computedOptions,
@@ -71,6 +72,7 @@ import {
     isArrayLiteralExpression,
     isComputedNonLiteralName,
     isImplicitGlob,
+    isNoSubstitutionTemplateLiteral,
     isObjectLiteralExpression,
     isRootedDiskPath,
     isString,
@@ -100,6 +102,7 @@ import {
     Path,
     PollingWatchKind,
     PrefixUnaryExpression,
+    preprocessorNames,
     ProjectReference,
     PropertyAssignment,
     PropertyName,
@@ -109,6 +112,7 @@ import {
     some,
     startsWith,
     StringLiteral,
+    StringLiteralLike,
     SyntaxKind,
     sys,
     toFileNameLowerCase,
@@ -548,6 +552,16 @@ export const commonOptionsWithBuild: CommandLineOption[] = [
         isCommandLineOnly: true,
         description: Diagnostics.Set_the_language_of_the_messaging_from_TypeScript_This_does_not_affect_emit,
         defaultValueDescription: Diagnostics.Platform_specific,
+    },
+    {
+        name: "preprocessorNames",
+        type: "list",
+        element: {
+            name: "preprocessorName",
+            type: "string",
+        },
+        affectsSourceFile: true,
+        affectsEmit: true,
     },
 ];
 
@@ -1274,6 +1288,24 @@ const commandOptionsWithoutBuild: CommandLineOption[] = [
         description: Diagnostics.Emit_design_type_metadata_for_decorated_declarations_in_source_files,
         defaultValueDescription: false,
     },
+    {
+        name: "allowTsImport",
+        type: "boolean",
+        affectsEmit: true,
+        defaultValueDescription: false,
+    },
+    {
+        name: "preprocessorFile",
+        type: "string",
+        affectsSourceFile: true,
+        affectsEmit: true,
+    },
+    {
+        name: "unaliasImportPaths",
+        type: "boolean",
+        affectsEmit: true,
+        defaultValueDescription: false,
+    }, 
 
     // Advanced
     {
@@ -1897,6 +1929,25 @@ function createUnknownOptionError(
         createDiagnosticForNodeInSourceFileOrCompilerDiagnostic(sourceFile, node, diagnostics.unknownDidYouMeanDiagnostic, unknownOptionErrorText || unknownOption, possibleOption.name) :
         createDiagnosticForNodeInSourceFileOrCompilerDiagnostic(sourceFile, node, diagnostics.unknownOptionDiagnostic, unknownOptionErrorText || unknownOption);
 }
+
+let allowTsImport = false;
+export function hackTsModuleSpecifier(moduleSpecifier: StringLiteralLike): void {
+    if (!allowTsImport) return;
+
+    const text = moduleSpecifier.text;
+    if(/^.+\.[mc]?ts$/.test(text)) {
+        moduleSpecifier.originalTsText = text;
+        moduleSpecifier.text = `${text.slice(0, -2)}js`;
+        if (isNoSubstitutionTemplateLiteral(moduleSpecifier)) {
+            moduleSpecifier.rawText = moduleSpecifier.text;
+        }
+    }
+}
+
+export let staticIfEnabled = false;
+
+export let unaliasImportPaths = false;
+export const resolvedToOutputMap: Map<string, string> = new Map();
 
 /** @internal */
 export function parseCommandLineWorker(
@@ -3016,6 +3067,10 @@ function parseJsonConfigFileContentWorker(
         configDirTemplateSubstitutionOptions,
         basePath,
     ) as CompilerOptions;
+
+    allowTsImport ||= !!options.allowTsImport;
+    unaliasImportPaths ||= !!options.unaliasImportPaths;
+
     const watchOptions = handleWatchOptionsConfigDirTemplateSubstitution(
         existingWatchOptions && parsedConfig.watchOptions ?
             extend(existingWatchOptions, parsedConfig.watchOptions) :
@@ -3027,6 +3082,14 @@ function parseJsonConfigFileContentWorker(
     const configFileSpecs = getConfigFileSpecs();
     if (sourceFile) sourceFile.configFileSpecs = configFileSpecs;
     setConfigFileInOptions(options, sourceFile);
+
+    staticIfEnabled = false;
+    preprocessorNames.clear();
+    if (options.preprocessorFile) {
+        staticIfEnabled = true;
+        options.preprocessorFile = getNormalizedAbsolutePath(options.preprocessorFile, basePathForFileNames);
+        options.preprocessorNames?.forEach(name => commandLinePreprocessorNames.add(name));
+    }
 
     return {
         options,

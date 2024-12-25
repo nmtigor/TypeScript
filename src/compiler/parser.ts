@@ -109,6 +109,7 @@ import {
     getLeadingCommentRanges,
     getSpellingSuggestion,
     getTextOfNodeFromSourceText,
+    hackTsModuleSpecifier,
     HasJSDoc,
     hasJSDocNodes,
     HasModifiers,
@@ -161,6 +162,7 @@ import {
     isNonNullExpression,
     isPrivateIdentifier,
     isSetAccessorDeclaration,
+    isStringLiteralLike,
     isStringOrNumericLiteralLike,
     isTaggedTemplateExpression,
     isTemplateLiteralKind,
@@ -8381,6 +8383,9 @@ namespace Parser {
 
         const importClause = tryParseImportClause(identifier, afterImportPos, isTypeOnly);
         const moduleSpecifier = parseModuleSpecifier();
+        if (isStringLiteralLike(moduleSpecifier)) {
+            hackTsModuleSpecifier(moduleSpecifier);
+        }
         const attributes = tryParseImportAttributes();
 
         parseSemicolon();

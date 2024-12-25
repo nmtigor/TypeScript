@@ -187,6 +187,12 @@ export function organizeImports(
                 trailingTriviaOption: textChanges.TrailingTriviaOption.Include,
             }, hasTrailingComment);
         }
+        for (const newImportDecl of newImportDecls) {
+            const specifier = newImportDecl.moduleSpecifier;
+            if (specifier !== undefined && isStringLiteralLike(specifier)) {
+                specifier.organizedImports = true;
+            }
+        }
     }
 
     function organizeImportsWorker(oldImportDecls: readonly ImportDeclaration[], comparer: { moduleSpecifierComparer?: Comparer<string>; namedImportComparer?: Comparer<string>; typeOrder?: OrganizeImportsTypeOrder; }) {

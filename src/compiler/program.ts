@@ -157,6 +157,7 @@ import {
     getTsConfigObjectLiteralExpression,
     getTsConfigPropArrayElementValue,
     getTypesPackageName,
+    hackTsModuleSpecifier,
     HasChangedAutomaticTypeDirectiveNames,
     hasChangesInResolutions,
     hasExtension,
@@ -2772,6 +2773,7 @@ export function createProgram(rootNamesOrOptions: readonly string[] | CreateProg
             useCaseSensitiveFileNames: () => host.useCaseSensitiveFileNames(),
             getBuildInfo: () => program.getBuildInfo?.(),
             getSourceFileFromReference: (file, ref) => program.getSourceFileFromReference(file, ref),
+            getResolvedModuleFromModuleSpecifier: (moduleSpecifier, sourceFile) => program.getResolvedModuleFromModuleSpecifier(moduleSpecifier, sourceFile),
             redirectTargetsMap,
             getFileIncludeReasons: program.getFileIncludeReasons,
             createHash: maybeBind(host, host.createHash),
@@ -3522,6 +3524,7 @@ export function createProgram(rootNamesOrOptions: readonly string[] | CreateProg
             forEachDynamicImportOrRequireCall(file, /*includeTypeSpaceImports*/ true, /*requireStringLiteralLikeArgument*/ true, (node, moduleSpecifier) => {
                 setParentRecursive(node, /*incremental*/ false); // we need parent data on imports before the program is fully bound, so we ensure it's set here
                 imports = append(imports, moduleSpecifier);
+                hackTsModuleSpecifier(moduleSpecifier);
             });
         }
 

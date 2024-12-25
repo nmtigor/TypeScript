@@ -948,7 +948,8 @@ export interface Node extends ReadonlyTextRange {
     //       `locals` and `nextContainer` have been moved to `LocalsContainer`
     //       `flowNode` has been moved to `FlowContainer`
     //       see: https://github.com/microsoft/TypeScript/pull/51682
-}
+    /** @internal */ isToplevel?: boolean | undefined;
+    }
 
 export interface JSDocContainer extends Node {
     _jsdocContainerBrand: any;
@@ -2760,6 +2761,9 @@ export interface ArrowFunction extends Expression, FunctionLikeDeclarationBase, 
 // For a NumericLiteral, the stored value is the toString() representation of the number. For example 1, 1.00, and 1e0 are all stored as just "1".
 export interface LiteralLikeNode extends Node {
     text: string;
+    originalTsText?: string;
+    originalAliasedText?: string;
+    organizedImports?: boolean;
     isUnterminated?: boolean;
     hasExtendedUnicodeEscape?: boolean;
 }
@@ -4316,6 +4320,8 @@ export interface SourceFile extends Declaration, LocalsContainer {
      * @internal
      */
     resolvedPath: Path;
+    /** */
+    jsFilePath?: string
     /** Original file name that can be different from fileName,
      * when file is included through project reference is mapped to its output instead of source
      * in that case originalFileName = name of input file
@@ -7488,6 +7494,11 @@ export interface CompilerOptions {
     useDefineForClassFields?: boolean;
     /** @internal */ tscBuild?: boolean;
 
+    allowTsImport?: boolean;
+    preprocessorFile?: string;
+    preprocessorNames?: string[];
+    unaliasImportPaths?: boolean;
+    
     [option: string]: CompilerOptionsValue | TsConfigSourceFile | undefined;
 }
 
@@ -8531,6 +8542,7 @@ export interface EmitHost extends ScriptReferenceHost, ModuleSpecifierResolution
     writeFile: WriteFileCallback;
     getBuildInfo(): BuildInfo | undefined;
     getSourceFileFromReference: Program["getSourceFileFromReference"];
+    getResolvedModuleFromModuleSpecifier: Program["getResolvedModuleFromModuleSpecifier"];
     readonly redirectTargetsMap: RedirectTargetsMap;
     createHash?(data: string): string;
 }
@@ -9788,6 +9800,9 @@ export interface PrinterOptions {
     /** @internal */ stripInternal?: boolean;
     /** @internal */ preserveSourceNewlines?: boolean;
     /** @internal */ terminateUnterminatedLiterals?: boolean;
+
+    /** @hacker */ preprocessorFile?: string;
+    /** @hacker */ hackAliasedModuleSpecifier?: (moduleSpecifier: StringLiteralLike, sourceFile?: SourceFile) => void;
 }
 
 /** @internal */
